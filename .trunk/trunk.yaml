@@ -23,7 +23,7 @@ lint:
     - eslint@9.21.0
     - markdown-link-check@3.14.2
     - sort-package-json@3.6.0
-    - actionlint@1.7.7
+    - actionlint@1.7.10
     - pre-commit-hooks@5.0.0
     - trivy@0.64.1
     - osv-scanner@2.0.3
