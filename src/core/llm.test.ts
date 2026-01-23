@@ -67,4 +67,11 @@ describe("llm factory", () => {
     expect(config.projectId).toBe("test-project");
     expect(config.location).toBe("us-central1"); // Default
   });
+
+  it("should return mock when provider is set to mock", () => {
+    const config = getModelConfig({ provider: "mock" });
+    expect(config.provider).toBe("MOCK");
+    expect(config.name).toBe("mock-model");
+    expect(config.apiKey).toBeUndefined();
+  });
 });

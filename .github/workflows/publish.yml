@@ -1,4 +1,4 @@
-# Copyright 2025 yu-iskw
+# Copyright 2026 yu-iskw
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Publish dbt-artifacts-parser
+name: Publish skill-inspector
 
 on:
   release:
@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: publish-dbt-artifacts-parser
+  group: publish-skill-inspector
   cancel-in-progress: false
 
 permissions:
@@ -39,29 +39,29 @@ jobs:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
       - uses: step-security/harden-runner@6c439dc8bdf85cadbbce9ed30d1c7b959517bc49 # v2.10.3
         with:
           egress-policy: audit
       - name: Setup Node.js
-        uses: actions/setup-node@v6.1.0
+        uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
           registry-url: https://registry.npmjs.org
           scope: "@yu-iskw"
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4.2.0
+        uses: pnpm/action-setup@v4
       - name: Install dependencies
         run: |
           pnpm install --frozen-lockfile
       - name: Build package
         run: |
-          pnpm --filter skill-inspector build
+          pnpm build
       - name: Run tests
         run: |
-          pnpm --filter skill-inspector test
+          pnpm test
       - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          pnpm publish --filter skill-inspector --no-git-checks --access public
+          pnpm publish --no-git-checks --access public

@@ -10,6 +10,7 @@ export const LLMProviderSchema = z.enum([
   "mistral",
   "google-vertex",
   "anthropic-vertex",
+  "mock",
 ]);
 
 export type LLMProvider = z.infer<typeof LLMProviderSchema>;
@@ -44,6 +45,8 @@ function getDefaultModel(provider: LLMProvider): string {
       return "mistral-large-latest";
     case "groq":
       return "llama-4-70b";
+    case "mock":
+      return "mock-model";
     default:
       return "gpt-5.2";
   }
@@ -72,7 +75,11 @@ export function getModelConfig(
     "mistral",
   ];
 
-  if (providersRequiringApiKey.includes(provider) && !apiKey) {
+  if (
+    provider !== "mock" &&
+    providersRequiringApiKey.includes(provider) &&
+    !apiKey
+  ) {
     throw new Error(
       `Missing API key for provider '${provider}'. Set the appropriate environment variable or pass 'apiKey' in config.`,
     );

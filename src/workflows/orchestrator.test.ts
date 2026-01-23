@@ -53,7 +53,9 @@ describe("orchestrator", () => {
       content: "Step 1: Do something",
     };
 
-    const report = await runInspectorWorkflow(mockSkill);
+    const report = await runInspectorWorkflow(mockSkill, false, {
+      provider: "mock",
+    });
 
     expect(report.skillName).toBe("test-skill");
     expect(report.overallScore).toBe(75); // 100 - 25 for high (SecurityAuditor)
