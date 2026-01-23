@@ -142,3 +142,4 @@ TODO.md
 .todo_list/
 
 *.bak
+.env

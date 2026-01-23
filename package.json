@@ -1,28 +1,53 @@
 {
-  "name": "typescript-template",
-  "version": "1.0.0",
-  "private": true,
-  "description": "",
-  "keywords": [],
+  "name": "skill-inspector",
+  "version": "0.1.0",
+  "description": "CLI tool to inspect Agent Skills for malicious behaviors",
+  "keywords": [
+    "agent",
+    "skills",
+    "security",
+    "inspector"
+  ],
   "license": "Apache-2.0",
-  "author": "",
-  "main": "index.js",
+  "author": "User",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "skill-inspector": "./dist/index.js"
+  },
   "scripts": {
-    "build": "pnpm --recursive build",
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
     "format": "trunk fmt",
-    "format:all": "trunk fmt --all",
     "lint": "trunk check",
-    "lint:all": "trunk check --all",
-    "lint:security": "trunk check --all --scope security",
+    "start": "node dist/index.js",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "@langchain/anthropic": "^1.3.11",
+    "@langchain/core": "^1.1.16",
+    "@langchain/google-genai": "^2.1.12",
+    "@langchain/google-vertexai": "^2.1.12",
+    "@langchain/langgraph": "^1.1.1",
+    "@langchain/openai": "^1.2.3",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.2",
+    "dotenv": "^17.2.3",
+    "gray-matter": "^4.0.3",
+    "langchain": "^1.2.12",
+    "simple-git": "^3.30.0",
+    "zod": "^4.3.6"
+  },
   "devDependencies": {
+    "@types/node": "^25.0.10",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   },
   "packageManager": "pnpm@10.28.1",
   "engines": {
-    "node": ">=24.13.0",
+    "node": ">=20.0.0",
     "pnpm": ">=10.28.1"
   }
 }
