@@ -136,7 +136,9 @@ export async function discoverSkills(
           }
         }
       } catch (error) {
-        logger.debug("Error during standard path expansion", error);
+        logger.debug("Error during standard path expansion", {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
 
       for (const relPath of potentialPaths) {

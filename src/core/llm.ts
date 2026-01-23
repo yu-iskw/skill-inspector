@@ -32,23 +32,23 @@ export type LLMConfig = z.infer<typeof LLMConfigSchema>;
 function getDefaultModel(provider: LLMProvider): string {
   switch (provider) {
     case "openai":
-      return "gpt-5.2";
+      return "gpt-5-mini";
     case "anthropic":
-      return "claude-4.5-haiku@20260315";
+      return "claude-4-5-haiku-20251015";
     case "google":
-      return "gemini-2.5-flash";
+      return "gemini-3-flash";
     case "google-vertex":
-      return "gemini-2.5-flash";
+      return "gemini-3-flash";
     case "anthropic-vertex":
-      return "claude-4.5-haiku@20260315";
+      return "claude-4-5-haiku@20251015";
     case "mistral":
-      return "mistral-large-latest";
+      return "mistral-small-latest";
     case "groq":
-      return "llama-4-70b";
+      return "llama-4-scout-17b";
     case "mock":
       return "mock-model";
     default:
-      return "gpt-5.2";
+      return "gpt-5-mini";
   }
 }
 
