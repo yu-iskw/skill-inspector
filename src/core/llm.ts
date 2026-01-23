@@ -90,6 +90,12 @@ export function getModelConfig(
     modelConfig.projectId = projectId;
     modelConfig.location = location;
 
+    if (!projectId) {
+      throw new Error(
+        "Google Vertex project ID is missing. Please set the GOOGLE_VERTEX_PROJECT environment variable or pass it in the config.",
+      );
+    }
+
     const vertex = createVertex({
       project: projectId,
       location,

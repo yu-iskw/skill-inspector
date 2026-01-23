@@ -26,7 +26,7 @@ describe("llm factory", () => {
     process.env.ANTHROPIC_API_KEY = "test-key";
     const config = getModelConfig();
     expect(config.provider).toBe("ANTHROPIC");
-    expect(config.name).toBe("claude-4.5-sonnet");
+    expect(config.name).toBe("claude-4.5-haiku@20260315");
   });
 
   it("should return google when provider is set to google", () => {
@@ -34,7 +34,7 @@ describe("llm factory", () => {
     process.env.GOOGLE_API_KEY = "test-key";
     const config = getModelConfig();
     expect(config.provider).toBe("GOOGLE");
-    expect(config.name).toBe("gemini-3-flash");
+    expect(config.name).toBe("gemini-2.5-flash");
   });
 
   it("should respect explicit config over environment variables", () => {
@@ -53,7 +53,7 @@ describe("llm factory", () => {
     process.env.GOOGLE_VERTEX_LOCATION = "us-east1";
     const config = getModelConfig();
     expect(config.provider).toBe("GOOGLE-VERTEX");
-    expect(config.name).toBe("gemini-3-flash");
+    expect(config.name).toBe("gemini-2.5-flash");
     expect(config.projectId).toBe("test-project");
     expect(config.location).toBe("us-east1");
   });
@@ -63,7 +63,7 @@ describe("llm factory", () => {
     process.env.GOOGLE_VERTEX_PROJECT = "test-project";
     const config = getModelConfig();
     expect(config.provider).toBe("ANTHROPIC-VERTEX");
-    expect(config.name).toBe("claude-4.5-sonnet");
+    expect(config.name).toBe("claude-4.5-haiku@20260315");
     expect(config.projectId).toBe("test-project");
     expect(config.location).toBe("us-central1"); // Default
   });

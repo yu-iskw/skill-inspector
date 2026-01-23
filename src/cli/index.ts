@@ -62,6 +62,7 @@ program
   .option("-m, --model <model>", "Specific model ID to use")
   .option("--json", "Output results in JSON format")
   .option("--debug", "Show detailed agent logs and thoughts", false)
+  .option("--stack-trace", "Show stack trace on error", false)
   .action(async (source = ".", options) => {
     try {
       console.log(chalk.blue(`🔍 Searching for skills in: ${source}...`));
@@ -106,7 +107,7 @@ program
     } catch (error: unknown) {
       if (error instanceof Error) {
         console.error(chalk.red(`❌ Error: ${error.message}`));
-        if (error.stack) {
+        if (options.stackTrace && error.stack) {
           console.error(chalk.gray(error.stack));
         }
       } else {

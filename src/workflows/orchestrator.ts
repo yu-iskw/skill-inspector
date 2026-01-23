@@ -89,10 +89,13 @@ export function createInspectorWorkflow(modelConfig: InspectorModelConfig) {
       });
 
       const allFindings: Finding[] = [];
-      const steps = result.steps as Record<string, any>;
+      const steps = result.steps as Record<
+        string,
+        { output?: { findings?: Finding[] } }
+      >;
       if (steps.explore?.output?.findings) {
         allFindings.push(
-          ...steps.explore.output.findings.map((f: any) => ({
+          ...steps.explore.output.findings.map((f) => ({
             ...f,
             agent: "SecurityExplorer",
           })),
@@ -100,7 +103,7 @@ export function createInspectorWorkflow(modelConfig: InspectorModelConfig) {
       }
       if (steps.audit?.output?.findings) {
         allFindings.push(
-          ...steps.audit.output.findings.map((f: any) => ({
+          ...steps.audit.output.findings.map((f) => ({
             ...f,
             agent: "SecurityAuditor",
           })),
@@ -179,7 +182,10 @@ export async function runInspectorWorkflow(
   });
 
   const allFindings: Finding[] = [];
-  const steps = result.steps as Record<string, any>;
+  const steps = result.steps as Record<
+    string,
+    { output?: { findings?: Finding[] } }
+  >;
   if (steps?.spec?.output?.findings)
     allFindings.push(...steps.spec.output.findings);
   if (steps?.security?.output?.findings)

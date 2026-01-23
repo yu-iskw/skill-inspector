@@ -2,55 +2,42 @@ import { describe, it, expect, vi } from "vitest";
 import { runInspectorWorkflow } from "./orchestrator.js";
 import { Skill } from "../core/types.js";
 
-// Mock Mastra
+// Mock Mastra Agent
 vi.mock("@mastra/core/agent", () => {
   return {
-    Agent: vi.fn().mockImplementation(function () {
+    Agent: vi.fn().mockImplementation(function ({ name }) {
       return {
-        name: "MockAgent",
-        generate: vi.fn().mockResolvedValue({
-          object: {
-            findings: [{ severity: "low", message: "Mock finding" }],
-          },
+        name,
+        generate: vi.fn().mockImplementation(async () => {
+          if (name === "SpecAgent") {
+            return {
+              object: {
+                findings: [{ severity: "low", message: "Spec finding" }],
+              },
+            };
+          }
+          if (name === "SecurityAuditor") {
+            return {
+              object: {
+                findings: [{ severity: "high", message: "Security finding" }],
+              },
+            };
+          }
+          return {
+            object: {
+              findings: [],
+            },
+          };
         }),
       };
     }),
   };
 });
 
-vi.mock("@mastra/core/workflows", async (importOriginal) => {
-  const actual = (await importOriginal()) as any;
-  return {
-    ...actual,
-    Workflow: vi.fn().mockImplementation(function (config) {
-      const workflow = new actual.Workflow(config);
-      workflow.execute = vi.fn().mockResolvedValue({
-        results: {
-          spec: {
-            findings: [
-              {
-                severity: "low",
-                message: "Spec finding",
-                agent: "SpecAgent",
-              },
-            ],
-          },
-          security: {
-            findings: [
-              {
-                severity: "high",
-                message: "Security finding",
-                agent: "SecurityAuditor",
-              },
-            ],
-          },
-          compatibility: { findings: [] },
-        },
-      });
-      return workflow;
-    }),
-  };
-});
+// We don't need to mock Workflow if we mock Agent,
+// as the real Workflow will use the mocked Agent.
+// But we might need to mock createStep to avoid real execution issues if any.
+// Actually, Mastra's Workflow/Step are fine to run in tests if dependencies are mocked.
 
 vi.mock("@mastra/core/tools", () => ({
   createTool: vi.fn().mockImplementation((config) => config),
@@ -71,5 +58,9 @@ describe("orchestrator", () => {
     expect(report.skillName).toBe("test-skill");
     expect(report.overallScore).toBe(73); // 100 - 2 for low - 25 for high
     expect(report.findings).toHaveLength(2);
+
+    const agents = report.findings.map((f) => f.agent);
+    expect(agents).toContain("SpecAgent");
+    expect(agents).toContain("SecurityAuditor");
   });
 });
