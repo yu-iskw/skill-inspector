@@ -7,9 +7,19 @@ import matter from "gray-matter";
 /**
  * Ensures the path is within the allowed root directory
  */
-function validatePath(allowedRoot: string, targetPath: string) {
-  const absoluteRoot = path.resolve(allowedRoot);
-  const absoluteTarget = path.resolve(targetPath);
+async function validatePath(allowedRoot: string, targetPath: string) {
+  const absoluteRoot = await fs.realpath(path.resolve(allowedRoot));
+  let absoluteTarget;
+  try {
+    absoluteTarget = await fs.realpath(path.resolve(targetPath));
+  } catch {
+    // If the file doesn't exist, we still want to check the path lexically
+    // so that we can't even "probe" paths outside the root.
+    // However, for non-existent files, we can't resolve symlinks.
+    // In this context, these tools are for reading existing files,
+    // so if it doesn't exist, it will fail later anyway.
+    absoluteTarget = path.resolve(targetPath);
+  }
 
   const relative = path.relative(absoluteRoot, absoluteTarget);
 
@@ -32,7 +42,7 @@ export const createSkillReader = (allowedRoot: string) =>
     }),
     execute: async (input) => {
       try {
-        validatePath(allowedRoot, input.filePath);
+        await validatePath(allowedRoot, input.filePath);
         const content = await fs.readFile(input.filePath, "utf-8");
         const { data, content: markdownBody } = matter(content);
         return {
@@ -60,7 +70,7 @@ export const createFileExplorer = (allowedRoot: string) =>
     }),
     execute: async (input) => {
       try {
-        validatePath(allowedRoot, input.directoryPath);
+        await validatePath(allowedRoot, input.directoryPath);
         const entries = await fs.readdir(input.directoryPath, {
           withFileTypes: true,
         });

@@ -46,7 +46,7 @@ vi.mock("@mastra/core/tools", () => ({
 describe("orchestrator", () => {
   it("should run the workflow and return a report", async () => {
     const mockSkill: Skill = {
-      path: "test/SKILL.md",
+      path: "test-skill/SKILL.md",
       name: "test-skill",
       description: "A test skill",
       frontmatter: { name: "test-skill", description: "A test skill" },

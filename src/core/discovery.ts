@@ -99,7 +99,47 @@ export async function discoverSkills(
       if (skill) skills.push(skill);
     } else if (stats.isDirectory()) {
       // 1. Check standard paths
-      for (const relPath of STANDARD_SKILL_PATHS) {
+      const potentialPaths = new Set(STANDARD_SKILL_PATHS);
+
+      // Add skills/*/SKILL.md and others that follow the folder-per-skill pattern
+      try {
+        const standardContainers = [
+          "",
+          "skills",
+          ".agents/skills",
+          ".agent/skills",
+          ".claude/skills",
+          ".cline/skills",
+          ".codex/skills",
+          ".cursor/skills",
+        ];
+        for (const container of standardContainers) {
+          const containerPath = container
+            ? path.join(searchDir, container)
+            : searchDir;
+          const containerExists = await fs
+            .stat(containerPath)
+            .then((s) => s.isDirectory())
+            .catch(() => false);
+
+          if (containerExists) {
+            const subdirs = await fs.readdir(containerPath, {
+              withFileTypes: true,
+            });
+            for (const subdir of subdirs) {
+              if (subdir.isDirectory() && !subdir.name.startsWith(".")) {
+                potentialPaths.add(
+                  path.join(container, subdir.name, "SKILL.md"),
+                );
+              }
+            }
+          }
+        }
+      } catch (error) {
+        logger.debug("Error during standard path expansion", error);
+      }
+
+      for (const relPath of potentialPaths) {
         const fullPath = path.join(searchDir, relPath);
         try {
           const exists = await fs

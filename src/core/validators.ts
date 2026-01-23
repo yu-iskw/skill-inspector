@@ -48,10 +48,13 @@ export function validateSpec(skill: Skill): Finding[] {
   if (
     skill.name !== dirName &&
     dirName !== "." &&
-    !skill.path.endsWith("SKILL.md")
+    skill.path.endsWith("SKILL.md")
   ) {
-    // This check might be tricky if skill.path is just "SKILL.md"
-    // But usually it's "path/to/skill/SKILL.md"
+    findings.push({
+      severity: "critical",
+      message: `Skill name '${skill.name}' does not match directory name '${dirName}'`,
+      agent: "SpecValidator",
+    });
   }
 
   // 3. Directory Structure Check

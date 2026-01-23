@@ -14,36 +14,63 @@ A sophisticated agentic tool built with [Mastra](https://mastra.ai/) to inspect 
 
 ### Installation
 
+You can run `skill-inspector` directly using `npx`:
+
 ```bash
+npx skill-inspector inspect ./my-skill
+```
+
+Or install it globally:
+
+```bash
+# Using npm
+npm install -g skill-inspector
+
+# Using pnpm
+pnpm add -g skill-inspector
+
+# Using yarn
+yarn global add skill-inspector
+```
+
+### For Contributors
+
+If you want to run the project locally for development:
+
+```bash
+# Install dependencies
 pnpm install
+
+# Build the project
 pnpm build
-```
 
-### Quick Start
-
-Inspect a local skill directory:
-
-```bash
+# Run via pnpm dev
 pnpm dev inspect ./my-skill
-```
-
-Or a remote GitHub repository:
-
-```bash
-pnpm dev inspect anthropics/skills
 ```
 
 ## Usage
 
 ```bash
-# Inspect specific skills by name in a repo
-pnpm dev inspect anthropics/skills -s "git-commit" "test-and-fix"
+# Basic inspection of a local directory
+skill-inspector inspect ./my-skill
 
-# Output as JSON for automation
-pnpm dev inspect ./my-skill --json
+# Inspect a remote GitHub repository
+skill-inspector inspect anthropics/skills
 
-# Debug mode (see agent thoughts and logs)
-pnpm dev inspect ./my-skill --debug
+# List found skills without inspecting
+skill-inspector inspect ./my-skill --list
+
+# Inspect specific skills by name
+skill-inspector inspect anthropics/skills -s "git-commit" "test-and-fix"
+
+# Choose a specific LLM provider and model
+skill-inspector inspect ./my-skill --provider anthropic --model claude-3-5-sonnet-latest
+
+# Output results as JSON for automation
+skill-inspector inspect ./my-skill --json
+
+# Debug mode (see detailed agent thoughts and logs)
+skill-inspector inspect ./my-skill --debug
 ```
 
 ## LLM Configuration
