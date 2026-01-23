@@ -1,58 +1,96 @@
-# {PROJECT_NAME}
+# skill-inspector
 
-{PROJECT_DESCRIPTION}
+A sophisticated agentic tool built with [Mastra](https://mastra.ai/) to inspect AI Agent Skills for quality, security, and compatibility.
+
+## Features
+
+- **Automated Spec Validation**: Ensures skills adhere to the [agentskills.io](https://agentskills.io) specification.
+- **Deep Security Auditing**: Two-phase agentic workflow to detect RCE, data exfiltration, and other vulnerabilities.
+- **Provider Compatibility**: Analyzes skills for vendor-specific extensions to ensure portability across Claude, GPT-4, Gemini, and more.
+- **Smart Discovery**: Automatically finds skills in local directories or remote GitHub repositories.
+- **Actionable Reports**: Provides a clear 0-100 score with specific findings and proposed fixes.
 
 ## Getting Started
 
-### Prerequisites
-
-- [pnpm](https://pnpm.io/)
-- Node.js (see `.node-version`)
-- [Trunk](https://trunk.io/) (for linting and formatting)
-
 ### Installation
 
-#### Install Trunk
-
-On macOS, you can install Trunk using Homebrew:
+You can run `skill-inspector` directly using `npx`:
 
 ```bash
-brew install trunk-io
+npx skill-inspector inspect ./my-skill
 ```
 
-For other platforms, see the [Trunk installation guide](https://docs.trunk.io/references/cli/getting-started/install).
-
-#### Install Dependencies
+Or install it globally:
 
 ```bash
+# Using npm
+npm install -g skill-inspector
+
+# Using pnpm
+pnpm add -g skill-inspector
+
+# Using yarn
+yarn global add skill-inspector
+```
+
+### For Contributors
+
+If you want to run the project locally for development:
+
+```bash
+# Install dependencies
 pnpm install
-trunk install
-```
 
-### Development
-
-```bash
-pnpm dev
-```
-
-### Build
-
-```bash
+# Build the project
 pnpm build
+
+# Run via pnpm dev
+pnpm dev inspect ./my-skill
 ```
 
-### Linting & Formatting
+## Usage
 
 ```bash
-pnpm lint
-pnpm format
+# Basic inspection of a local directory
+skill-inspector inspect ./my-skill
+
+# Inspect a remote GitHub repository
+skill-inspector inspect anthropics/skills
+
+# List found skills without inspecting
+skill-inspector inspect ./my-skill --list
+
+# Inspect specific skills by name
+skill-inspector inspect anthropics/skills -s "git-commit" "test-and-fix"
+
+# Choose a specific LLM provider and model
+skill-inspector inspect ./my-skill --provider anthropic --model claude-3-5-sonnet-latest
+
+# Output results as JSON for automation
+skill-inspector inspect ./my-skill --json
+
+# Debug mode (see detailed agent thoughts and logs)
+skill-inspector inspect ./my-skill --debug
 ```
 
-## Project Structure
+## LLM Configuration
 
-- `packages/`: Monorepo packages
-  - `common/`: Shared utilities and types
+The inspector supports multiple providers. Set your API keys as environment variables:
+
+| Provider             | Default Model               | API Key Env Var                                   |
+| :------------------- | :-------------------------- | :------------------------------------------------ |
+| **OpenAI**           | `gpt-5.2`                   | `OPENAI_API_KEY`                                  |
+| **Anthropic**        | `claude-4.5-haiku@20260315` | `ANTHROPIC_API_KEY`                               |
+| **Google AI**        | `gemini-2.5-flash`          | `GOOGLE_API_KEY`                                  |
+| **Mistral**          | `mistral-large-latest`      | `MISTRAL_API_KEY`                                 |
+| **Groq**             | `llama-4-70b`               | `GROQ_API_KEY`                                    |
+| **Vertex AI**        | `gemini-2.5-flash`          | `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION` |
+| **Anthropic Vertex** | `claude-4.5-haiku@20260315` | `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION` |
+
+## Documentation
+
+For technical details, architecture diagrams, and contribution guidelines, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## License
 
-{LICENSE}
+Apache-2.0

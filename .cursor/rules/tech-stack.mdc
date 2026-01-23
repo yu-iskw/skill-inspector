@@ -5,36 +5,19 @@ alwaysApply: true
 
 This project uses:
 
-- **Package Manager:** [pnpm](https://pnpm.io/)
+- **Package Manager:** [pnpm](https://pnpm.io/) (v10.x)
 - **Node.js Version:** (read from [.node-version](mdc:.node-version))
 
-## pnpm Workspace & Monorepo Best Practices
-
-This repository is structured as a pnpm workspace (see [pnpm-workspace.yaml](mdc:pnpm-workspace.yaml)).
+## pnpm Best Practices
 
 ### Common Commands
 
 - **Install All Dependencies:** `pnpm install`
 - **Add Dependency:**
-  - To current package: `pnpm add <pkg>`
+  - To package: `pnpm add <pkg>`
   - As dev dependency: `pnpm add -D <pkg>`
-  - To workspace root: `pnpm add -w <pkg>`
 - **Run Scripts:**
-  - In current package: `pnpm <script>` (e.g., `pnpm test`)
-  - In all packages: `pnpm -r <script>`
-  - In specific package: `pnpm --filter <pkg-name> <script>`
-
-### Workspace Protocol
-
-Always use the `workspace:` protocol when referencing local packages in `package.json`:
-
-```json
-{
-  "dependencies": {
-    "@my-project/common": "workspace:*"
-  }
-}
-```
+  - `pnpm <script>` (e.g., `pnpm test`)
 
 ### Dependency Management
 

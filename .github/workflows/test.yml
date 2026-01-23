@@ -1,4 +1,4 @@
-# Copyright 2023 Ubie, inc.
+# Copyright 2026 yu-iskw
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,40 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Trunk Check
+name: Unit Tests
 
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions: read-all
 
 jobs:
-  trunk_check:
-    name: Trunk Check Runner
+  test:
+    name: Run Unit Tests
     runs-on: ubuntu-latest
-    permissions:
-      checks: write # For trunk to post annotations
-      contents: read # For repo checkout
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: step-security/harden-runner@6c439dc8bdf85cadbbce9ed30d1c7b959517bc49 # v2.10.3
+
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
         with:
           egress-policy: audit
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
           cache: pnpm
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Trunk Check
-        uses: trunk-io/trunk-action@v1
+
+      - name: Run tests
+        run: pnpm test

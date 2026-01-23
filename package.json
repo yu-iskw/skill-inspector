@@ -1,28 +1,52 @@
 {
-  "name": "typescript-template",
-  "version": "1.0.0",
-  "private": true,
-  "description": "",
-  "keywords": [],
+  "name": "skill-inspector",
+  "version": "0.1.0",
+  "description": "CLI tool to inspect Agent Skills for malicious behaviors",
+  "keywords": [
+    "agent",
+    "skills",
+    "security",
+    "inspector"
+  ],
   "license": "Apache-2.0",
-  "author": "",
-  "main": "index.js",
+  "author": "User",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "skill-inspector": "./dist/index.js"
+  },
   "scripts": {
-    "build": "pnpm --recursive build",
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
     "format": "trunk fmt",
-    "format:all": "trunk fmt --all",
     "lint": "trunk check",
-    "lint:all": "trunk check --all",
-    "lint:security": "trunk check --all --scope security",
+    "start": "node dist/index.js",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@ai-sdk/google-vertex": "^4.0.28",
+    "@clack/prompts": "^0.11.0",
+    "@mastra/core": "^1.0.4",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.2",
+    "dotenv": "^17.2.3",
+    "gray-matter": "^4.0.3",
+    "simple-git": "^3.30.0",
+    "zod": "^4.3.6"
+  },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^25.0.10",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.53.1",
     "vitest": "^4.0.18"
   },
   "packageManager": "pnpm@10.28.1",
   "engines": {
-    "node": ">=24.13.0",
+    "node": ">=22.13.0",
     "pnpm": ">=10.28.1"
   }
 }
