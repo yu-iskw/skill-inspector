@@ -25,6 +25,24 @@ const STANDARD_SKILL_PATHS = [
 
 const ALLOWED_REMOTE_HOSTS = ["github.com", "gitlab.com", "bitbucket.org"];
 
+/**
+ * Normalizes a repository path into a full URL.
+ * If no scheme is present, it defaults to github.com unless an allowed host is detected.
+ */
+export function normalizeRepoUrl(inputPath: string): string {
+  if (inputPath.includes("://")) {
+    return inputPath;
+  }
+
+  const hasAllowedHost = ALLOWED_REMOTE_HOSTS.some(
+    (host) => inputPath === host || inputPath.startsWith(`${host}/`),
+  );
+
+  return hasAllowedHost
+    ? `https://${inputPath}`
+    : `https://github.com/${inputPath}`;
+}
+
 const RemotePathSchema = z
   .string()
   .url()
@@ -71,10 +89,7 @@ export async function discoverSkills(
         (inputPath.includes("/") && !inputPath.startsWith("."));
 
       if (isPotentialRemote) {
-        let repoUrl = inputPath;
-        if (!inputPath.includes("://")) {
-          repoUrl = `https://github.com/${inputPath}`;
-        }
+        const repoUrl = normalizeRepoUrl(inputPath);
 
         // Validate remote URL
         const validation = RemotePathSchema.safeParse(repoUrl);

@@ -34,13 +34,13 @@ function getDefaultModel(provider: LLMProvider): string {
     case "openai":
       return "gpt-5-mini";
     case "anthropic":
-      return "claude-4-5-haiku-20251015";
+      return "claude-4-5-haiku@20260315";
     case "google":
-      return "gemini-3-flash";
+      return "gemini-2.5-flash";
     case "google-vertex":
-      return "gemini-3-flash";
+      return "gemini-2.5-flash";
     case "anthropic-vertex":
-      return "claude-4-5-haiku@20251015";
+      return "claude-4-5-haiku@20260315";
     case "mistral":
       return "mistral-small-latest";
     case "groq":

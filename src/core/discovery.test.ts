@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { discoverSkills } from "./discovery.js";
+import { discoverSkills, normalizeRepoUrl } from "./discovery.js";
 import path from "node:path";
 import fs from "node:fs/promises";
 
@@ -42,5 +42,46 @@ describe("discovery", () => {
     expect(skills).toHaveLength(0);
 
     await fs.rm(tempDir, { recursive: true, force: true });
+  });
+
+  describe("normalizeRepoUrl", () => {
+    it("should default to github.com for unqualified paths", () => {
+      expect(normalizeRepoUrl("owner/repo")).toBe(
+        "https://github.com/owner/repo",
+      );
+    });
+
+    it("should respect existing schemes", () => {
+      expect(normalizeRepoUrl("http://gitlab.com/org/repo")).toBe(
+        "http://gitlab.com/org/repo",
+      );
+      expect(normalizeRepoUrl("https://bitbucket.org/org/repo")).toBe(
+        "https://bitbucket.org/org/repo",
+      );
+    });
+
+    it("should detect allowed hosts without scheme", () => {
+      expect(normalizeRepoUrl("gitlab.com/org/repo")).toBe(
+        "https://gitlab.com/org/repo",
+      );
+      expect(normalizeRepoUrl("bitbucket.org/org/repo")).toBe(
+        "https://bitbucket.org/org/repo",
+      );
+      expect(normalizeRepoUrl("github.com/org/repo")).toBe(
+        "https://github.com/org/repo",
+      );
+    });
+
+    it("should handle host-only paths", () => {
+      expect(normalizeRepoUrl("gitlab.com")).toBe("https://gitlab.com");
+    });
+
+    it("should not misidentify hosts as prefixes", () => {
+      // "gitlab.com.untrusted.io" should still default to github or be handled as is
+      // but based on current implementation it will default to github.com/gitlab.com.untrusted.io
+      expect(normalizeRepoUrl("gitlab.com.untrusted.io/org/repo")).toBe(
+        "https://github.com/gitlab.com.untrusted.io/org/repo",
+      );
+    });
   });
 });
