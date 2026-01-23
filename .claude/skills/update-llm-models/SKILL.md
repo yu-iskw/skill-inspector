@@ -36,7 +36,7 @@ Update the return values in the `switch` statement for each provider. Ensure the
 
 ## Guidelines
 
-- **Prefer Efficiency**: Always choose the "lighter" or "faster" version if multiple variants exist (e.g., prefer `gemini-3-flash` over `gemini-3-pro`).
+- **Prefer Efficiency**: Always choose the "lighter" or "faster" version if multiple variants exist (e.g., prefer `gemini-2.5-flash` over `gemini-2.5-pro`).
 - **Exact Identifiers**: Use the precise model identifier string required by the provider's API.
 - **Provider Coverage**: Ensure all providers in the `LLMProvider` type are addressed if they have a known lightweight default.
 
@@ -55,3 +55,12 @@ case "google":
 case "google":
   return "gemini-3-flash";
 ```
+
+## Resources
+
+- **OpenAI**: [Models Overview](https://platform.openai.com/docs/models)
+- **Anthropic**: [Claude Models](https://docs.anthropic.com/en/docs/about-claude/models/all-models)
+- **Google Gemini**: [Gemini Models](https://ai.google.dev/gemini-api/docs/models)
+- **Vertex AI**: [Model Garden](https://cloud.google.com/vertex-ai/generative-ai/docs/model-garden/available-models)
+- **Mistral**: [Models Overview](https://docs.mistral.ai/getting-started/models)
+- **Groq**: [Supported Models](https://console.groq.com/docs/models)
