@@ -14,6 +14,7 @@ import {
   InspectionOutputSchema,
 } from "../agents/factory.js";
 import { skillReader, specLookup } from "../agents/tools.js";
+import { specAgentInstructions } from "../agents/spec.js";
 import { getModelConfig, LLMConfig } from "../core/llm.js";
 import { createSecurityWorkflow } from "./security.js";
 
@@ -27,16 +28,20 @@ const StepOutputSchema = z.object({
 export function createInspectorWorkflow(modelConfig: InspectorModelConfig) {
   const specAgent = createInspectorAgent({
     name: "SpecAgent",
-    instructions: `You are the Spec Validator. Your goal is to ensure the skill adheres strictly to agentskills.io.
-    Check frontmatter, naming conventions, and description accuracy.`,
+    instructions: specAgentInstructions,
     model: modelConfig,
     tools: { specLookup, skillReader },
   });
 
   const compatAgent = createInspectorAgent({
     name: "CompatAgent",
-    instructions: `You are the Compatibility Expert. Check if the skill uses agent-specific extensions or patterns
-    that might not work across different LLM providers (e.g. Claude-only XML tags).`,
+    instructions: `You are the Compatibility Expert. Your goal is to ensure the skill is portable across different LLM providers (e.g., Claude, GPT-4, Gemini), adhering to the OPEN Agent Skills standard (agentskills.io).
+
+    RULES:
+    1. The \`SKILL.md\` format (frontmatter + markdown) and directory structure (\`scripts/\`, \`assets/\`) is an OPEN STANDARD. Do NOT flag the use of this format as "Claude-specific" or "vendor-locked".
+    2. Flag usage of vendor-specific prompts or XML tags ONLY if they degrade functionality on other models (e.g. strict reliance on specific <antThinking> tags without fallback).
+    3. Flag hardcoded reliance on specific OS binaries (e.g., 'requires apt-get') UNLESS specified in the \`compatibility\` frontmatter field.
+    4. If the skill uses standard Markdown, Python, or Bash, it is likely Compatible. Report NO issues in that case.`,
     model: modelConfig,
   });
 

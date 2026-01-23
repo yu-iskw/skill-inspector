@@ -4,6 +4,7 @@ import {
   createInspectorAgent,
   InspectionOutputSchema,
 } from "../agents/factory.js";
+import { securityAgentInstructions } from "../agents/security.js";
 import { fileExplorer, skillReader } from "../agents/tools.js";
 import { FindingSchema, InspectorModelConfig } from "../core/types.js";
 
@@ -14,18 +15,24 @@ const SecurityStepOutputSchema = z.object({
 export function createSecurityWorkflow(model: InspectorModelConfig) {
   const explorerAgent = createInspectorAgent({
     name: "SecurityExplorer",
-    instructions: `You are the Security Explorer. Your job is to map out the skill's environment.
-    Identify all scripts, external dependencies, and potential attack vectors.
-    Look for hidden files or obfuscated code.`,
+    instructions: `You are the Security Explorer. Your job is to silently scan the skill's file structure for anomalies.
+
+    RULES:
+    1. **Silence by Default**: If the skill structure is standard (e.g., \`SKILL.md\` + \`scripts/*.py\` + \`assets/\`), do NOT generate any findings.
+    2. **Anomalies Only**: ONLY generate a Finding if you detect:
+       - Hidden files or directories (starting with \`.\`).
+       - Obfuscated or suspicious filenames (e.g., \`.._confnfused.py\`, \`0x123.bin\`).
+       - Files with unusual executable extensions (e.g., \`.exe\`, \`.dll\`, \`.sh\`, \`.so\`) found **outside** the \`scripts/\` directory.
+    3. **No Informational Findings**: Do not report "List of scripts" or "Documentation references" as findings. Those are not security issues.
+
+    NOTE: The existence of \`scripts/\`, \`assets/\`, and \`references/\` is standard and should be ignored if they contain expected file types.`,
     model,
     tools: { fileExplorer, skillReader },
   });
 
   const auditorAgent = createInspectorAgent({
     name: "SecurityAuditor",
-    instructions: `You are the Security Auditor. Review the findings from the Explorer and the skill content.
-    Identify specific vulnerabilities like RCE, Data Exfiltration, or Secret Theft.
-    Provide detailed findings with severity.`,
+    instructions: securityAgentInstructions,
     model,
     tools: { skillReader },
   });
