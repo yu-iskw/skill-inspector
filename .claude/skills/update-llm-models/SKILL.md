@@ -58,7 +58,7 @@ case "google":
 
 ## Resources
 
-- **OpenAI**: [Models Overview](https://platform.openai.com/docs/models)
+- **OpenAI**: [Models Overview](https://platform.openai.com/docs/models) <!-- trunk-ignore(markdown-link-check/403) -->
 - **Anthropic**: [Claude Models](https://docs.anthropic.com/en/docs/about-claude/models/all-models)
 - **Google Gemini**: [Gemini Models](https://ai.google.dev/gemini-api/docs/models)
 - **Vertex AI**: [Model Garden](https://cloud.google.com/vertex-ai/generative-ai/docs/model-garden/available-models)
