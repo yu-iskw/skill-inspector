@@ -29,11 +29,18 @@ export async function discoverSkills(inputPath: string): Promise<Skill[]> {
   let tempDir = "";
 
   try {
-    // Handle Remote Repos (Git)
+    // Check if it's a local path first
+    const localExists = await fs
+      .stat(inputPath)
+      .then(() => true)
+      .catch(() => false);
+
+    // Handle Remote Repos (Git) if not a local path
     if (
-      inputPath.startsWith("http") ||
-      inputPath.endsWith(".git") ||
-      !inputPath.includes("/")
+      !localExists &&
+      (inputPath.startsWith("http") ||
+        inputPath.endsWith(".git") ||
+        inputPath.includes("/"))
     ) {
       const repoUrl = inputPath.includes("://")
         ? inputPath
@@ -72,10 +79,11 @@ export async function discoverSkills(inputPath: string): Promise<Skill[]> {
     }
 
     return skills;
-  } finally {
+  } catch (error) {
     if (tempDir) {
       await fs.rm(tempDir, { recursive: true, force: true });
     }
+    throw error;
   }
 }
 

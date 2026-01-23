@@ -21,7 +21,7 @@ export function createInspectorAgent({
     name,
     instructions: `${instructions}\n\nAlways report your findings clearly.`,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    model: model as any,
+    model: (model.modelInstance || model) as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tools: tools as any,
   });

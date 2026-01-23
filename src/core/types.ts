@@ -13,6 +13,7 @@ export interface InspectorModelConfig {
   provider: string;
   name: string;
   apiKey?: string;
+  modelInstance?: unknown;
   [key: string]: unknown;
 }
 

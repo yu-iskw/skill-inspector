@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { createVertex } from "@ai-sdk/google-vertex";
 import { InspectorModelConfig } from "./types.js";
 
 export const LLMProviderSchema = z.enum([
@@ -32,13 +33,13 @@ function getDefaultModel(provider: LLMProvider): string {
     case "openai":
       return "gpt-5.2";
     case "anthropic":
-      return "claude-4.5-sonnet";
+      return "claude-4.5-haiku@20260315";
     case "google":
-      return "gemini-3-flash";
+      return "gemini-2.5-flash";
     case "google-vertex":
-      return "gemini-3-flash";
+      return "gemini-2.5-flash";
     case "anthropic-vertex":
-      return "claude-4.5-sonnet";
+      return "claude-4.5-haiku@20260315";
     case "mistral":
       return "mistral-large-latest";
     case "groq":
@@ -82,7 +83,20 @@ export function getModelConfig(
   };
 
   // 5. Handle provider-specific extras
-  if (provider === "google-vertex" || provider === "anthropic-vertex") {
+  if (provider === "google-vertex") {
+    const projectId = process.env.GOOGLE_VERTEX_PROJECT;
+    const location = process.env.GOOGLE_VERTEX_LOCATION || "us-central1";
+
+    modelConfig.projectId = projectId;
+    modelConfig.location = location;
+
+    const vertex = createVertex({
+      project: projectId,
+      location,
+    });
+
+    modelConfig.modelInstance = vertex(validated.model!);
+  } else if (provider === "anthropic-vertex") {
     modelConfig.projectId = process.env.GOOGLE_VERTEX_PROJECT;
     modelConfig.location = process.env.GOOGLE_VERTEX_LOCATION || "us-central1";
   }

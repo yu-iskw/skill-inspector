@@ -1,4 +1,4 @@
-import { Workflow, createStep } from "@mastra/core/workflows";
+import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { Mastra } from "@mastra/core";
 import { z } from "zod";
 import {
@@ -74,15 +74,9 @@ export function createInspectorWorkflow(modelConfig: InspectorModelConfig) {
     outputSchema: StepOutputSchema,
     execute: async ({ getInitData, mastra }) => {
       const { skill } = getInitData<{ skill: Skill }>();
-      const result = await (
-        mastra!.getWorkflow("security-audit") as unknown as {
-          execute: (args: {
-            inputData: { skillPath: string; skillContent: string };
-          }) => Promise<{
-            results: Record<string, { findings: Finding[] }>;
-          }>;
-        }
-      ).execute({
+      const securityWorkflow = mastra!.getWorkflow("security-audit");
+      const run = await securityWorkflow.createRun();
+      const result = await run.start({
         inputData: {
           skillPath: skill.path,
           skillContent: skill.content,
@@ -90,18 +84,18 @@ export function createInspectorWorkflow(modelConfig: InspectorModelConfig) {
       });
 
       const allFindings: Finding[] = [];
-      const results = result.results;
-      if (results.explore?.findings) {
+      const steps = result.steps as Record<string, any>;
+      if (steps.explore?.output?.findings) {
         allFindings.push(
-          ...results.explore.findings.map((f) => ({
+          ...steps.explore.output.findings.map((f: any) => ({
             ...f,
             agent: "SecurityExplorer",
           })),
         );
       }
-      if (results.audit?.findings) {
+      if (steps.audit?.output?.findings) {
         allFindings.push(
-          ...results.audit.findings.map((f) => ({
+          ...steps.audit.output.findings.map((f: any) => ({
             ...f,
             agent: "SecurityAuditor",
           })),
@@ -135,7 +129,7 @@ export function createInspectorWorkflow(modelConfig: InspectorModelConfig) {
     },
   });
 
-  const mainWorkflow = new Workflow({
+  const mainWorkflow = createWorkflow({
     id: "skill-inspector-main",
     inputSchema: z.object({
       skill: SkillSchema,
@@ -170,15 +164,9 @@ export async function runInspectorWorkflow(
     },
   });
 
-  const result = await (
-    mastra.getWorkflow("skill-inspector-main") as unknown as {
-      execute: (args: {
-        inputData: { skill: Skill; debug: boolean };
-      }) => Promise<{
-        results: Record<string, { findings: Finding[] }>;
-      }>;
-    }
-  ).execute({
+  const workflow = mastra.getWorkflow("skill-inspector-main");
+  const run = await workflow.createRun();
+  const result = await run.start({
     inputData: {
       skill,
       debug,
@@ -186,12 +174,13 @@ export async function runInspectorWorkflow(
   });
 
   const allFindings: Finding[] = [];
-  const results = result.results;
-  if (results?.spec?.findings) allFindings.push(...results.spec.findings);
-  if (results?.security?.findings)
-    allFindings.push(...results.security.findings);
-  if (results?.compatibility?.findings)
-    allFindings.push(...results.compatibility.findings);
+  const steps = result.steps as Record<string, any>;
+  if (steps?.spec?.output?.findings)
+    allFindings.push(...steps.spec.output.findings);
+  if (steps?.security?.output?.findings)
+    allFindings.push(...steps.security.output.findings);
+  if (steps?.compatibility?.output?.findings)
+    allFindings.push(...steps.compatibility.output.findings);
 
   let finalScore = 100;
   for (const f of allFindings) {

@@ -1,4 +1,4 @@
-import { Workflow, createStep } from "@mastra/core/workflows";
+import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { z } from "zod";
 import {
   createInspectorAgent,
@@ -72,7 +72,7 @@ export function createSecurityWorkflow(model: InspectorModelConfig) {
     },
   });
 
-  const securityWorkflow = new Workflow({
+  const securityWorkflow = createWorkflow({
     id: "security-audit",
     inputSchema: z.object({
       skillPath: z.string(),

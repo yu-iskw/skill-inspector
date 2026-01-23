@@ -4,16 +4,16 @@ A sophisticated agentic tool built with [Mastra](https://mastra.ai/) to inspect 
 
 ## Features
 
-- **Multi-Agent Orchestration**: Uses Mastra to coordinate specialized agents (Spec, Security, Compatibility) in a sequential pipeline.
-- **Deep Security Audit**: Performs a two-phase security check (Explorer → Auditor) to identify RCE, data exfiltration, secret theft, and prompt injection.
+- **Multi-Agent Orchestration**: Leverages [Mastra](https://mastra.ai/) workflows to coordinate specialized agents (Spec, Security, Compatibility) in a robust, sequential pipeline.
+- **Two-Phase Security Audit**: Implements a dedicated security workflow consisting of an **Explorer** agent for environment mapping and an **Auditor** agent for deep vulnerability analysis.
 - **Spec Validation**: Validates skills against the [agentskills.io](https://agentskills.io) specification, checking frontmatter, naming, and descriptions.
 - **Cross-Provider Compatibility**: Analyzes skills for provider-specific extensions (e.g., Claude-only XML tags) to ensure broad portability.
-- **Flexible Discovery**: Supports local paths and remote GitHub repositories (e.g., `user/repo`), automatically searching standard skill paths.
+- **Robust Skill Discovery**: Supports 14+ standard skill locations (e.g., `.claude/skills/`, `.cursor/skills/`, `.gemini/skills/`) and remote GitHub repositories with recursive fallback.
 - **Tool-Augmented Analysis**: Agents use filesystem explorers and spec lookups to provide grounded findings.
 
 ## Architecture
 
-The inspector follows a sequential multi-agent workflow:
+The inspector follows a sequential multi-agent workflow orchestrated by Mastra:
 
 ```mermaid
 graph TD
@@ -40,18 +40,21 @@ graph TD
 
 ### 1. Discovery
 
-The tool searches for `SKILL.md` files in standard locations:
+The tool searches for `SKILL.md` files in standard locations across local directories and remote repositories:
 
-- `.claude/skills/`
-- `.cursor/skills/`
-- `.codex/skills/`
-- `skills/`
-- Root directory and recursive fallback.
+- `SKILL.md` (Root)
+- `skills/SKILL.md`, `skills/.curated/SKILL.md`, `skills/.experimental/SKILL.md`, `skills/.system/SKILL.md`
+- `.agents/skills/SKILL.md`, `.agent/skills/SKILL.md`
+- `.claude/skills/SKILL.md`, `.cursor/skills/SKILL.md`, `.cline/skills/SKILL.md`
+- `.codex/skills/SKILL.md`, `.gemini/skills/SKILL.md`, `.goose/skills/SKILL.md`
+- `.github/skills/SKILL.md`
+
+If no skill is found in standard paths, it performs a recursive search for any `SKILL.md` file (excluding `node_modules` and dot-directories).
 
 ### 2. Security Workflow
 
 - **Phase 1: Explorer**: Maps the environment, identifying scripts, dependencies, and potential attack vectors.
-- **Phase 2: Auditor**: Performs a deep dive into the content and explorer findings to identify vulnerabilities.
+- **Phase 2: Auditor**: Performs a deep dive into the content and explorer findings to identify vulnerabilities like RCE, data exfiltration, and secret theft.
 
 ### 3. Scoring System
 
@@ -98,15 +101,15 @@ pnpm dev inspect ./my-skill --debug
 
 The inspector supports multiple providers and uses environment variables for configuration.
 
-| Provider             | Default Model          | API Key Env Var                                   |
-| :------------------- | :--------------------- | :------------------------------------------------ |
-| **OpenAI**           | `gpt-5.2`              | `OPENAI_API_KEY`                                  |
-| **Anthropic**        | `claude-4.5-sonnet`    | `ANTHROPIC_API_KEY`                               |
-| **Google AI**        | `gemini-3-flash`       | `GOOGLE_API_KEY`                                  |
-| **Mistral**          | `mistral-large-latest` | `MISTRAL_API_KEY`                                 |
-| **Groq**             | `llama-4-70b`          | `GROQ_API_KEY`                                    |
-| **Vertex AI**        | `gemini-3-flash`       | `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION` |
-| **Anthropic Vertex** | `claude-4.5-sonnet`    | `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION` |
+| Provider             | Default Model               | API Key Env Var                                   |
+| :------------------- | :-------------------------- | :------------------------------------------------ |
+| **OpenAI**           | `gpt-5.2`                   | `OPENAI_API_KEY`                                  |
+| **Anthropic**        | `claude-4.5-haiku@20260315` | `ANTHROPIC_API_KEY`                               |
+| **Google AI**        | `gemini-2.5-flash`          | `GOOGLE_API_KEY`                                  |
+| **Mistral**          | `mistral-large-latest`      | `MISTRAL_API_KEY`                                 |
+| **Groq**             | `llama-4-70b`               | `GROQ_API_KEY`                                    |
+| **Vertex AI**        | `gemini-2.5-flash`          | `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION` |
+| **Anthropic Vertex** | `claude-4.5-haiku@20260315` | `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION` |
 
 ### Example Setup
 
