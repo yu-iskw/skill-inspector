@@ -1,8 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { skillReader, fileExplorer, specLookup } from "./tools.js";
+import { createSkillReader, createFileExplorer, specLookup } from "./tools.js";
 import path from "node:path";
 
 describe("custom tools", () => {
+  const allowedRoot = process.cwd();
+  const skillReader = createSkillReader(allowedRoot);
+  const fileExplorer = createFileExplorer(allowedRoot);
+
   describe("skillReader", () => {
     it("should read and parse a valid SKILL.md", async () => {
       const filePath = path.resolve(process.cwd(), "test/safe-skill/SKILL.md");
@@ -24,6 +28,20 @@ describe("custom tools", () => {
           {},
         ),
       ).rejects.toThrow();
+    });
+
+    it("should reject access to files outside allowed root", async () => {
+      const restrictedReader = createSkillReader(
+        path.join(allowedRoot, "test"),
+      );
+      await expect(
+        (restrictedReader as any).execute(
+          {
+            filePath: path.join(allowedRoot, "package.json"),
+          },
+          {},
+        ),
+      ).rejects.toThrow(/Access denied/);
     });
   });
 

@@ -56,11 +56,11 @@ describe("orchestrator", () => {
     const report = await runInspectorWorkflow(mockSkill);
 
     expect(report.skillName).toBe("test-skill");
-    expect(report.overallScore).toBe(73); // 100 - 2 for low - 25 for high
-    expect(report.findings).toHaveLength(2);
+    expect(report.overallScore).toBe(75); // 100 - 25 for high (SecurityAuditor)
+    expect(report.findings).toHaveLength(1);
 
     const agents = report.findings.map((f) => f.agent);
-    expect(agents).toContain("SpecAgent");
-    expect(agents).toContain("SecurityAuditor");
+    expect(agents).not.toContain("SpecAgent");
+    expect(agents).toContain("SecurityAudit");
   });
 });

@@ -5,14 +5,17 @@ import {
   InspectionOutputSchema,
 } from "../agents/factory.js";
 import { securityAgentInstructions } from "../agents/security.js";
-import { fileExplorer, skillReader } from "../agents/tools.js";
+import { createFileExplorer, createSkillReader } from "../agents/tools.js";
 import { FindingSchema, InspectorModelConfig } from "../core/types.js";
 
 const SecurityStepOutputSchema = z.object({
   findings: z.array(FindingSchema),
 });
 
-export function createSecurityWorkflow(model: InspectorModelConfig) {
+export function createSecurityWorkflow(
+  model: InspectorModelConfig,
+  skillDir: string,
+) {
   const explorerAgent = createInspectorAgent({
     name: "SecurityExplorer",
     instructions: `You are the Security Explorer. Your job is to silently scan the skill's file structure for anomalies.
@@ -27,14 +30,17 @@ export function createSecurityWorkflow(model: InspectorModelConfig) {
 
     NOTE: The existence of \`scripts/\`, \`assets/\`, and \`references/\` is standard and should be ignored if they contain expected file types.`,
     model,
-    tools: { fileExplorer, skillReader },
+    tools: {
+      fileExplorer: createFileExplorer(skillDir),
+      skillReader: createSkillReader(skillDir),
+    },
   });
 
   const auditorAgent = createInspectorAgent({
     name: "SecurityAuditor",
     instructions: securityAgentInstructions,
     model,
-    tools: { skillReader },
+    tools: { skillReader: createSkillReader(skillDir) },
   });
 
   const exploreStep = createStep({

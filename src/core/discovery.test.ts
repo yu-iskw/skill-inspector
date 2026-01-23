@@ -6,7 +6,7 @@ import fs from "node:fs/promises";
 describe("discovery", () => {
   it("should find skills in a directory", async () => {
     const testDir = path.resolve(process.cwd(), "test/safe-skill");
-    const skills = await discoverSkills(testDir);
+    const { skills } = await discoverSkills(testDir);
     expect(skills).toHaveLength(1);
     expect(skills[0].name).toBe("safe-greet");
     expect(skills[0].frontmatter.name).toBe("safe-greet");
@@ -15,7 +15,7 @@ describe("discovery", () => {
   it("should find skills recursively if not in standard path", async () => {
     // Standard path would be SKILL.md in root of search, but we check recursive too
     const testDir = path.resolve(process.cwd(), "test");
-    const skills = await discoverSkills(testDir);
+    const { skills } = await discoverSkills(testDir);
     expect(skills.length).toBeGreaterThanOrEqual(2); // safe-skill and malicious-skill
   });
 
@@ -38,7 +38,7 @@ describe("discovery", () => {
     const tempDir = path.join(process.cwd(), ".temp-test-empty");
     await fs.mkdir(tempDir, { recursive: true });
 
-    const skills = await discoverSkills(tempDir);
+    const { skills } = await discoverSkills(tempDir);
     expect(skills).toHaveLength(0);
 
     await fs.rm(tempDir, { recursive: true, force: true });

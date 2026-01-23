@@ -1,6 +1,7 @@
 import { createWorkflow, createStep } from "@mastra/core/workflows";
 import { Mastra } from "@mastra/core";
 import { z } from "zod";
+import path from "node:path";
 import {
   Skill,
   SkillSchema,
@@ -13,10 +14,9 @@ import {
   createInspectorAgent,
   InspectionOutputSchema,
 } from "../agents/factory.js";
-import { skillReader, specLookup } from "../agents/tools.js";
-import { specAgentInstructions } from "../agents/spec.js";
 import { getModelConfig, LLMConfig } from "../core/llm.js";
 import { createSecurityWorkflow } from "./security.js";
+import { validateSpec } from "../core/validators.js";
 
 const StepOutputSchema = z.object({
   findings: z.array(FindingSchema),
@@ -25,14 +25,10 @@ const StepOutputSchema = z.object({
 /**
  * Create the main inspector workflow using Mastra
  */
-export function createInspectorWorkflow(modelConfig: InspectorModelConfig) {
-  const specAgent = createInspectorAgent({
-    name: "SpecAgent",
-    instructions: specAgentInstructions,
-    model: modelConfig,
-    tools: { specLookup, skillReader },
-  });
-
+export function createInspectorWorkflow(
+  modelConfig: InspectorModelConfig,
+  skill: Skill,
+) {
   const compatAgent = createInspectorAgent({
     name: "CompatAgent",
     instructions: `You are the Compatibility Expert. Your goal is to ensure the skill is portable across different LLM providers (e.g., Claude, GPT-4, Gemini), adhering to the OPEN Agent Skills standard (agentskills.io).
@@ -45,7 +41,10 @@ export function createInspectorWorkflow(modelConfig: InspectorModelConfig) {
     model: modelConfig,
   });
 
-  const securityWorkflow = createSecurityWorkflow(modelConfig);
+  const securityWorkflow = createSecurityWorkflow(
+    modelConfig,
+    path.dirname(skill.path),
+  );
 
   const specStep = createStep({
     id: "spec",
@@ -56,20 +55,8 @@ export function createInspectorWorkflow(modelConfig: InspectorModelConfig) {
     outputSchema: StepOutputSchema,
     execute: async ({ getInitData }) => {
       const { skill } = getInitData<{ skill: Skill }>();
-      const result = await specAgent.generate(
-        `Validate the skill at ${skill.path}. Content:\n${skill.content}`,
-        {
-          structuredOutput: {
-            schema: InspectionOutputSchema,
-          },
-        },
-      );
-      return {
-        findings: result.object.findings.map((f) => ({
-          ...f,
-          agent: "SpecAgent",
-        })),
-      };
+      const findings = validateSpec(skill);
+      return { findings };
     },
   });
 
@@ -77,9 +64,8 @@ export function createInspectorWorkflow(modelConfig: InspectorModelConfig) {
     id: "security",
     inputSchema: StepOutputSchema,
     outputSchema: StepOutputSchema,
-    execute: async ({ getInitData, mastra }) => {
+    execute: async ({ getInitData }) => {
       const { skill } = getInitData<{ skill: Skill }>();
-      const securityWorkflow = mastra!.getWorkflow("security-audit");
       const run = await securityWorkflow.createRun();
       const result = await run.start({
         inputData: {
@@ -93,21 +79,19 @@ export function createInspectorWorkflow(modelConfig: InspectorModelConfig) {
         string,
         { output?: { findings?: Finding[] } }
       >;
-      if (steps.explore?.output?.findings) {
-        allFindings.push(
-          ...steps.explore.output.findings.map((f) => ({
-            ...f,
-            agent: "SecurityExplorer",
-          })),
-        );
-      }
-      if (steps.audit?.output?.findings) {
-        allFindings.push(
-          ...steps.audit.output.findings.map((f) => ({
-            ...f,
-            agent: "SecurityAuditor",
-          })),
-        );
+
+      for (const stepName in steps) {
+        const stepResult = steps[stepName];
+        if (stepResult?.output?.findings) {
+          allFindings.push(
+            ...stepResult.output.findings.map((f) => ({
+              ...f,
+              agent:
+                f.agent ||
+                `Security${stepName.charAt(0).toUpperCase()}${stepName.slice(1)}`,
+            })),
+          );
+        }
       }
 
       return { findings: allFindings };
@@ -162,8 +146,10 @@ export async function runInspectorWorkflow(
   llmConfig?: Partial<LLMConfig>,
 ): Promise<InspectionReport> {
   const modelConfig = getModelConfig(llmConfig);
-  const { mainWorkflow, securityWorkflow } =
-    createInspectorWorkflow(modelConfig);
+  const { mainWorkflow, securityWorkflow } = createInspectorWorkflow(
+    modelConfig,
+    skill,
+  );
 
   const mastra = new Mastra({
     workflows: {
@@ -186,12 +172,13 @@ export async function runInspectorWorkflow(
     string,
     { output?: { findings?: Finding[] } }
   >;
-  if (steps?.spec?.output?.findings)
-    allFindings.push(...steps.spec.output.findings);
-  if (steps?.security?.output?.findings)
-    allFindings.push(...steps.security.output.findings);
-  if (steps?.compatibility?.output?.findings)
-    allFindings.push(...steps.compatibility.output.findings);
+
+  for (const stepName in steps) {
+    const stepResult = steps[stepName];
+    if (stepResult?.output?.findings) {
+      allFindings.push(...stepResult.output.findings);
+    }
+  }
 
   let finalScore = 100;
   for (const f of allFindings) {

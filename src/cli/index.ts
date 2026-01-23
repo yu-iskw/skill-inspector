@@ -1,9 +1,11 @@
 /* eslint-disable no-console */
 import { Command } from "commander";
 import chalk from "chalk";
+import fs from "node:fs/promises";
 import { discoverSkills } from "../core/discovery.js";
 import { InspectionReport } from "../core/types.js";
 import { runInspectorWorkflow } from "../workflows/orchestrator.js";
+import { logger } from "../core/logger.js";
 
 export const program = new Command();
 
@@ -14,7 +16,7 @@ program
 
 function printReport(report: InspectionReport, isJson: boolean) {
   if (isJson) {
-    console.log(JSON.stringify(report, null, 2));
+    logger.info("Inspection complete", { report });
     return;
   }
 
@@ -64,13 +66,20 @@ program
   .option("--debug", "Show detailed agent logs and thoughts", false)
   .option("--stack-trace", "Show stack trace on error", false)
   .action(async (source = ".", options) => {
-    try {
-      console.log(chalk.blue(`🔍 Searching for skills in: ${source}...`));
+    // Configure logger
+    logger.setJson(!!options.json);
+    logger.setDebug(!!options.debug);
 
-      const skills = await discoverSkills(source);
+    let tempDir: string | undefined;
+    try {
+      logger.info(`Searching for skills in: ${source}...`);
+
+      const discovery = await discoverSkills(source);
+      const skills = discovery.skills;
+      tempDir = discovery.tempDir;
 
       if (skills.length === 0) {
-        console.log(chalk.yellow("⚠️ No skills found."));
+        logger.warn("No skills found.");
         return;
       }
 
@@ -81,38 +90,47 @@ program
       }
 
       if (options.list) {
-        console.log(chalk.green(`\nFound ${filteredSkills.length} skills:`));
+        logger.success(`Found ${filteredSkills.length} skills:`);
         filteredSkills.forEach((s) =>
           console.log(`- ${chalk.bold(s.name)}: ${s.description}`),
         );
         return;
       }
 
-      console.log(
-        chalk.cyan(`\n🚀 Inspecting ${filteredSkills.length} skills...\n`),
-      );
+      logger.info(`Inspecting ${filteredSkills.length} skills...`);
 
       for (const skill of filteredSkills) {
-        console.log(
-          chalk.white(`--- Inspecting: ${chalk.bold(skill.name)} ---`),
-        );
+        if (!options.json) {
+          console.log(
+            `\n${chalk.white("--- Inspecting:")} ${chalk.bold(skill.name)} ${chalk.white("---")}`,
+          );
+        }
+
+        logger.debug(`Starting inspection for skill: ${skill.name}`, {
+          skillPath: skill.path,
+        });
 
         const report = await runInspectorWorkflow(skill, !!options.debug, {
           provider: options.provider,
           model: options.model,
         });
 
+        logger.info(`Finished inspection for skill: ${skill.name}`, {
+          score: report.overallScore,
+          findingsCount: report.findings.length,
+        });
+
         printReport(report, !!options.json);
       }
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error(chalk.red(`❌ Error: ${error.message}`));
-        if (options.stackTrace && error.stack) {
-          console.error(chalk.gray(error.stack));
-        }
-      } else {
-        console.error(chalk.red(`❌ Error: ${String(error)}`));
-      }
+      logger.error("Inspection failed", error);
       process.exit(1);
+    } finally {
+      if (tempDir) {
+        logger.debug(`Cleaning up temporary directory: ${tempDir}`);
+        await fs.rm(tempDir, { recursive: true, force: true }).catch((err) => {
+          logger.error(`Failed to cleanup temp directory ${tempDir}`, err);
+        });
+      }
     }
   });

@@ -64,6 +64,20 @@ export function getModelConfig(
   // 2. Resolve API key
   const apiKey = config?.apiKey || getEnvApiKey(provider);
 
+  const providersRequiringApiKey: LLMProvider[] = [
+    "openai",
+    "anthropic",
+    "google",
+    "groq",
+    "mistral",
+  ];
+
+  if (providersRequiringApiKey.includes(provider) && !apiKey) {
+    throw new Error(
+      `Missing API key for provider '${provider}'. Set the appropriate environment variable or pass 'apiKey' in config.`,
+    );
+  }
+
   // 3. Resolve model
   const model =
     config?.model || process.env.LLM_MODEL || getDefaultModel(provider);
@@ -103,7 +117,13 @@ export function getModelConfig(
 
     modelConfig.modelInstance = vertex(validated.model!);
   } else if (provider === "anthropic-vertex") {
-    modelConfig.projectId = process.env.GOOGLE_VERTEX_PROJECT;
+    const projectId = process.env.GOOGLE_VERTEX_PROJECT;
+    if (!projectId) {
+      throw new Error(
+        "Google Vertex project ID is missing. Please set the GOOGLE_VERTEX_PROJECT environment variable.",
+      );
+    }
+    modelConfig.projectId = projectId;
     modelConfig.location = process.env.GOOGLE_VERTEX_LOCATION || "us-central1";
   }
 

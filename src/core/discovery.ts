@@ -3,6 +3,8 @@ import path from "node:path";
 import matter from "gray-matter";
 import { simpleGit } from "simple-git";
 import { Skill } from "./types.js";
+import { logger } from "./logger.js";
+import { z } from "zod";
 
 const STANDARD_SKILL_PATHS = [
   "SKILL.md",
@@ -21,33 +23,72 @@ const STANDARD_SKILL_PATHS = [
   ".goose/skills/SKILL.md",
 ];
 
+const ALLOWED_REMOTE_HOSTS = ["github.com", "gitlab.com", "bitbucket.org"];
+
+const RemotePathSchema = z
+  .string()
+  .url()
+  .refine(
+    (url) => {
+      try {
+        const parsed = new URL(url);
+        return ALLOWED_REMOTE_HOSTS.includes(parsed.hostname);
+      } catch {
+        return false;
+      }
+    },
+    {
+      message: `Remote URL must be from one of the allowed hosts: ${ALLOWED_REMOTE_HOSTS.join(", ")}`,
+    },
+  );
+
 /**
  * Robustly find and parse a skill from a local or remote path
  */
-export async function discoverSkills(inputPath: string): Promise<Skill[]> {
+export async function discoverSkills(
+  inputPath: string,
+): Promise<{ skills: Skill[]; tempDir?: string }> {
   let searchDir = inputPath;
   let tempDir = "";
 
   try {
     // Check if it's a local path first
+    const absoluteInputPath = path.resolve(inputPath);
     const localExists = await fs
-      .stat(inputPath)
+      .stat(absoluteInputPath)
       .then(() => true)
       .catch(() => false);
 
+    if (localExists) {
+      searchDir = absoluteInputPath;
+    }
+
     // Handle Remote Repos (Git) if not a local path
-    if (
-      !localExists &&
-      (inputPath.startsWith("http") ||
+    if (!localExists) {
+      const isPotentialRemote =
+        inputPath.startsWith("http") ||
         inputPath.endsWith(".git") ||
-        inputPath.includes("/"))
-    ) {
-      const repoUrl = inputPath.includes("://")
-        ? inputPath
-        : `https://github.com/${inputPath}`;
-      tempDir = path.join(process.cwd(), `.temp-inspect-${Date.now()}`);
-      await simpleGit().clone(repoUrl, tempDir, ["--depth", "1"]);
-      searchDir = tempDir;
+        (inputPath.includes("/") && !inputPath.startsWith("."));
+
+      if (isPotentialRemote) {
+        let repoUrl = inputPath;
+        if (!inputPath.includes("://")) {
+          repoUrl = `https://github.com/${inputPath}`;
+        }
+
+        // Validate remote URL
+        const validation = RemotePathSchema.safeParse(repoUrl);
+        if (!validation.success) {
+          throw new Error(
+            `Invalid or disallowed remote path: ${inputPath}. ${validation.error.issues[0].message}`,
+          );
+        }
+
+        tempDir = path.join(process.cwd(), `.temp-inspect-${Date.now()}`);
+        logger.debug(`Cloning remote repository: ${repoUrl} to ${tempDir}`);
+        await simpleGit().clone(repoUrl, tempDir, ["--depth", "1"]);
+        searchDir = tempDir;
+      }
     }
 
     const skills: Skill[] = [];
@@ -61,28 +102,45 @@ export async function discoverSkills(inputPath: string): Promise<Skill[]> {
       for (const relPath of STANDARD_SKILL_PATHS) {
         const fullPath = path.join(searchDir, relPath);
         try {
-          const skill = await parseSkillFile(fullPath);
-          if (skill) skills.push(skill);
-        } catch {
-          // Skip if not found
+          const exists = await fs
+            .stat(fullPath)
+            .then(() => true)
+            .catch(() => false);
+          if (exists) {
+            const skill = await parseSkillFile(fullPath);
+            if (skill) skills.push(skill);
+          }
+        } catch (error) {
+          logger.warn(`Failed to parse skill at ${fullPath}`, { error });
         }
       }
 
       // 2. If nothing found in standard paths, do a recursive search
       if (skills.length === 0) {
+        logger.debug(
+          `No skills found in standard paths, searching recursively in ${searchDir}`,
+        );
         const foundFiles = await findSkillFilesRecursive(searchDir);
         for (const f of foundFiles) {
-          const skill = await parseSkillFile(f);
-          if (skill) skills.push(skill);
+          try {
+            const skill = await parseSkillFile(f);
+            if (skill) skills.push(skill);
+          } catch (error) {
+            logger.warn(`Failed to parse skill at ${f}`, { error });
+          }
         }
       }
     }
 
-    return skills;
+    return { skills, tempDir };
   } catch (error) {
     if (tempDir) {
-      await fs.rm(tempDir, { recursive: true, force: true });
+      logger.debug(`Cleaning up temporary directory on error: ${tempDir}`);
+      await fs.rm(tempDir, { recursive: true, force: true }).catch((err) => {
+        logger.error(`Failed to cleanup temp directory ${tempDir}`, err);
+      });
     }
+    logger.error("Error during skill discovery", error);
     throw error;
   }
 }
