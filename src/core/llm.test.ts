@@ -1,28 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { getChatModel } from "./llm.js";
-
-// Mock universal initChatModel
-vi.mock("langchain/chat_models/universal", () => ({
-  initChatModel: vi.fn(async (model, options) => {
-    return {
-      model,
-      options,
-      _llmType: () => options.modelProvider,
-      withConfig: vi.fn().mockReturnThis(),
-    };
-  }),
-}));
-
-interface MockChatModelResult {
-  model: string;
-  options: {
-    modelProvider: string;
-    configuration?: { baseURL: string };
-    metadata?: Record<string, unknown>;
-  };
-  _llmType: () => string;
-  withConfig: ReturnType<typeof vi.fn>;
-}
+import { getModelConfig } from "./llm.js";
 
 describe("llm factory", () => {
   const originalEnv = process.env;
@@ -36,91 +13,58 @@ describe("llm factory", () => {
     process.env = originalEnv;
   });
 
-  it("should return openai by default", async () => {
+  it("should return openai by default", () => {
     process.env.OPENAI_API_KEY = "test-key";
-    const model = (await getChatModel()) as unknown as MockChatModelResult;
-    expect(model._llmType()).toBe("openai");
-    expect(model.model).toBe("gpt-4o-mini");
+    const config = getModelConfig();
+    expect(config.provider).toBe("OPENAI");
+    expect(config.name).toBe("gpt-5.2");
+    expect(config.apiKey).toBe("test-key");
   });
 
-  it("should return anthropic when provider is set to anthropic", async () => {
+  it("should return anthropic when provider is set to anthropic", () => {
     process.env.LLM_PROVIDER = "anthropic";
     process.env.ANTHROPIC_API_KEY = "test-key";
-    const model = (await getChatModel()) as unknown as MockChatModelResult;
-    expect(model._llmType()).toBe("anthropic");
-    expect(model.model).toBe("claude-3-5-haiku-latest");
+    const config = getModelConfig();
+    expect(config.provider).toBe("ANTHROPIC");
+    expect(config.name).toBe("claude-4.5-sonnet");
   });
 
-  it("should return google_genai when provider is set to google-genai", async () => {
-    process.env.LLM_PROVIDER = "google-genai";
+  it("should return google when provider is set to google", () => {
+    process.env.LLM_PROVIDER = "google";
     process.env.GOOGLE_API_KEY = "test-key";
-    const model = (await getChatModel()) as unknown as MockChatModelResult;
-    expect(model._llmType()).toBe("google_genai");
+    const config = getModelConfig();
+    expect(config.provider).toBe("GOOGLE");
+    expect(config.name).toBe("gemini-3-flash");
   });
 
-  it("should return google_vertexai when provider is set to google-vertex", async () => {
-    process.env.LLM_PROVIDER = "google-vertex";
-    process.env.GOOGLE_VERTEX_PROJECT = "test-project";
-    const model = (await getChatModel()) as unknown as MockChatModelResult;
-    expect(model._llmType()).toBe("google_vertexai");
-  });
-
-  it("should return openai with custom base URL for ollama", async () => {
-    process.env.LLM_PROVIDER = "ollama";
-    process.env.LOCAL_LLM_BASE_URL = "http://localhost:1234/v1";
-    const model = (await getChatModel()) as unknown as MockChatModelResult;
-    expect(model._llmType()).toBe("ollama"); // MapProvider maps ollama to ollama
-    expect(model.options.configuration?.baseURL).toBe(
-      "http://localhost:1234/v1",
-    );
-  });
-
-  it("should respect explicit config over environment variables", async () => {
+  it("should respect explicit config over environment variables", () => {
     process.env.LLM_PROVIDER = "openai";
-    const model = (await getChatModel({
+    const config = getModelConfig({
       provider: "anthropic",
       apiKey: "explicit-key",
-    })) as unknown as MockChatModelResult;
-    expect(model._llmType()).toBe("anthropic");
-  });
-
-  it("should return customModel if provided", async () => {
-    const mockModel = { _llmType: () => "mock" } as unknown as BaseChatModel;
-    const model = await getChatModel({}, mockModel);
-    expect(model).toBe(mockModel);
-  });
-
-  it("should return deepseek when provider is set to deepseek", async () => {
-    process.env.LLM_PROVIDER = "deepseek";
-    process.env.DEEPSEEK_API_KEY = "test-key";
-    const model = (await getChatModel()) as unknown as MockChatModelResult;
-    expect(model._llmType()).toBe("deepseek");
-    expect(model.model).toBe("deepseek-chat");
-  });
-
-  it("should return mistralai when provider is set to mistral", async () => {
-    process.env.LLM_PROVIDER = "mistral";
-    process.env.MISTRAL_API_KEY = "test-key";
-    const model = (await getChatModel()) as unknown as MockChatModelResult;
-    expect(model._llmType()).toBe("mistralai");
-    expect(model.model).toBe("open-mistral-nemo");
-  });
-
-  it("should return groq when provider is set to groq", async () => {
-    process.env.LLM_PROVIDER = "groq";
-    process.env.GROQ_API_KEY = "test-key";
-    const model = (await getChatModel()) as unknown as MockChatModelResult;
-    expect(model._llmType()).toBe("groq");
-    expect(model.model).toBe("llama-3.3-70b-versatile");
-  });
-
-  it("should attach metadata when provided", async () => {
-    const metadata = { agentName: "test-agent" };
-    const model = (await getChatModel({
-      metadata,
-    })) as unknown as MockChatModelResult;
-    expect(model.withConfig).toHaveBeenCalledWith({
-      metadata: expect.objectContaining(metadata),
     });
+    expect(config.provider).toBe("ANTHROPIC");
+    expect(config.apiKey).toBe("explicit-key");
+  });
+
+  it("should return google-vertex when provider is set to google-vertex", () => {
+    process.env.LLM_PROVIDER = "google-vertex";
+    process.env.GOOGLE_VERTEX_PROJECT = "test-project";
+    process.env.GOOGLE_VERTEX_LOCATION = "us-east1";
+    const config = getModelConfig();
+    expect(config.provider).toBe("GOOGLE-VERTEX");
+    expect(config.name).toBe("gemini-3-flash");
+    expect(config.projectId).toBe("test-project");
+    expect(config.location).toBe("us-east1");
+  });
+
+  it("should return anthropic-vertex when provider is set to anthropic-vertex", () => {
+    process.env.LLM_PROVIDER = "anthropic-vertex";
+    process.env.GOOGLE_VERTEX_PROJECT = "test-project";
+    const config = getModelConfig();
+    expect(config.provider).toBe("ANTHROPIC-VERTEX");
+    expect(config.name).toBe("claude-4.5-sonnet");
+    expect(config.projectId).toBe("test-project");
+    expect(config.location).toBe("us-central1"); // Default
   });
 });

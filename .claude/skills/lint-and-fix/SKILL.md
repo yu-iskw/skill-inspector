@@ -11,14 +11,13 @@ An autonomous loop for the agent to identify, fix, and verify linting and format
 
 ## Loop Logic
 
-1. **Identify**: Run `pnpm lint` (which executes `trunk check`) to list current violations.
-2. **Analyze**: Examine the output from Trunk, focusing on the file path, line number, and error message. Refer to [../common-references/troubleshooting.md](../common-references/troubleshooting.md) for environment or runtime issues.
-3. **Fix**:
-   - For formatting issues, run `pnpm format` (which executes `trunk fmt`).
-   - For linting violations, apply the minimum necessary change to the source code to resolve the error.
-4. **Verify**: Re-run `pnpm lint`.
-   - If passed: Move to the next issue or finish if all are resolved.
-   - If failed: Analyze the new failure and repeat the loop.
+1. **Format**: Run `pnpm format` (which executes `trunk fmt`) to automatically fix trivial formatting issues.
+2. **Identify**: Run `pnpm lint` (which executes `trunk check`) to list any remaining violations.
+3. **Analyze**: Examine the output from Trunk, focusing on the file path, line number, and error message. Refer to [../common-references/troubleshooting.md](../common-references/troubleshooting.md) for environment or runtime issues.
+4. **Fix**: Apply the minimum necessary change to the source code to resolve the reported linting violations.
+5. **Verify**: Re-run the loop (starting from **Format**) until all issues are resolved.
+   - If `pnpm lint` passes: Finish.
+   - If it fails: Analyze the new failure and repeat the loop.
 
 ## Termination Criteria
 
@@ -27,11 +26,13 @@ An autonomous loop for the agent to identify, fix, and verify linting and format
 
 ## Examples
 
-### Scenario: Fixing a formatting violation
+### Scenario: Fixing violations in a modified file
 
-1. `pnpm lint` reports formatting issues in `src/index.ts`.
-2. Agent runs `pnpm format`.
-3. `pnpm lint` now passes.
+1. Agent runs `pnpm format` to ensure consistent style.
+2. Agent runs `pnpm lint` and finds a linting violation in `src/index.ts`.
+3. Agent analyzes the error and applies a manual fix.
+4. Agent runs `pnpm format` again (part of the loop).
+5. Agent runs `pnpm lint` and it now passes.
 
 ## Resources
 

@@ -1,44 +1,66 @@
 import { describe, it, expect } from "vitest";
 import { skillReader, fileExplorer, specLookup } from "./tools.js";
 import path from "node:path";
-import fs from "node:fs/promises";
 
 describe("custom tools", () => {
   describe("skillReader", () => {
     it("should read and parse a valid SKILL.md", async () => {
       const filePath = path.resolve(process.cwd(), "test/safe-skill/SKILL.md");
-      const result = await skillReader.invoke({ filePath });
-      const parsed = JSON.parse(result);
-      expect(parsed.frontmatter.name).toBe("safe-greet");
-      expect(parsed.body).toContain("Safe Greet");
+      const result = (await (skillReader as any).execute({ filePath }, {})) as {
+        frontmatter: any;
+        body: string;
+      };
+
+      expect(result.frontmatter.name).toBe("safe-greet");
+      expect(result.body).toContain("Safe Greet");
     });
 
     it("should return an error for non-existent file", async () => {
-      const result = await skillReader.invoke({ filePath: "non-existent.md" });
-      expect(result).toContain("Error reading skill file");
+      await expect(
+        (skillReader as any).execute(
+          {
+            filePath: "non-existent.md",
+          },
+          {},
+        ),
+      ).rejects.toThrow();
     });
   });
 
   describe("fileExplorer", () => {
     it("should list files in a directory", async () => {
       const directoryPath = path.resolve(process.cwd(), "test/safe-skill");
-      const result = await fileExplorer.invoke({ directoryPath });
-      expect(result).toContain("[FILE] SKILL.md");
+      const result = (await (fileExplorer as any).execute(
+        { directoryPath },
+        {},
+      )) as { files: string[] };
+
+      expect(result.files).toContain("[FILE] SKILL.md");
     });
 
     it("should return an error for non-existent directory", async () => {
-      const result = await fileExplorer.invoke({
-        directoryPath: "non-existent-dir",
-      });
-      expect(result).toContain("Error exploring directory");
+      await expect(
+        (fileExplorer as any).execute(
+          {
+            directoryPath: "non-existent-dir",
+          },
+          {},
+        ),
+      ).rejects.toThrow();
     });
   });
 
   describe("specLookup", () => {
     it("should return specification details", async () => {
-      const result = await specLookup.invoke({ query: "frontmatter" });
-      expect(result).toContain("Agent Skills Specification");
-      expect(result).toContain("Required frontmatter");
+      const result = (await (specLookup as any).execute(
+        {
+          query: "frontmatter",
+        },
+        {},
+      )) as { specDocs: string };
+
+      expect(result.specDocs).toContain("Agent Skills Specification");
+      expect(result.specDocs).toContain("Required frontmatter");
     });
   });
 });

@@ -1,77 +1,200 @@
-import { StateGraph, START, END } from "@langchain/langgraph";
-import { Skill, InspectionReport } from "../core/types.js";
-import { createAgent } from "../agents/factory.js";
-import { skillReader, fileExplorer, specLookup } from "../agents/tools.js";
-import { getChatModel } from "../core/llm.js";
-import { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import { createSecuritySubgraph } from "./security.js";
-import { InspectorAnnotation, InspectorState } from "./state.js";
+import { Workflow, createStep } from "@mastra/core/workflows";
+import { Mastra } from "@mastra/core";
+import { z } from "zod";
+import {
+  Skill,
+  SkillSchema,
+  InspectionReport,
+  Finding,
+  FindingSchema,
+  InspectorModelConfig,
+} from "../core/types.js";
+import {
+  createInspectorAgent,
+  InspectionOutputSchema,
+} from "../agents/factory.js";
+import { skillReader, specLookup } from "../agents/tools.js";
+import { getModelConfig, LLMConfig } from "../core/llm.js";
+import { createSecurityWorkflow } from "./security.js";
+
+const StepOutputSchema = z.object({
+  findings: z.array(FindingSchema),
+});
 
 /**
- * Compile the inspector graph
+ * Create the main inspector workflow using Mastra
  */
-export async function createInspectorGraph(llm: BaseChatModel) {
-  // 1. Define Specialized Agents
-  const specAgent = createAgent(
-    llm,
-    [specLookup, skillReader],
-    `You are the Spec Validator. Your goal is to ensure the skill adheres strictly to agentskills.io.
-    Check frontmatter, naming conventions, and description accuracy.
-    Return findings as a JSON array: [{"severity": "low"|"medium"|"high", "message": "...", "fix": "..."}]`,
-    "SpecAgent",
-  );
+export function createInspectorWorkflow(modelConfig: InspectorModelConfig) {
+  const specAgent = createInspectorAgent({
+    name: "SpecAgent",
+    instructions: `You are the Spec Validator. Your goal is to ensure the skill adheres strictly to agentskills.io.
+    Check frontmatter, naming conventions, and description accuracy.`,
+    model: modelConfig,
+    tools: { specLookup, skillReader },
+  });
 
-  const securitySubgraph = await createSecuritySubgraph(llm);
+  const compatAgent = createInspectorAgent({
+    name: "CompatAgent",
+    instructions: `You are the Compatibility Expert. Check if the skill uses agent-specific extensions or patterns
+    that might not work across different LLM providers (e.g. Claude-only XML tags).`,
+    model: modelConfig,
+  });
 
-  const compatAgent = createAgent(
-    llm,
-    [],
-    `You are the Compatibility Expert. Check if the skill uses agent-specific extensions or patterns
-    that might not work across different LLM providers (e.g. Claude-only XML tags).
-    Return findings as a JSON array: [{"severity": "low"|"medium"|"high", "message": "...", "fix": "..."}]`,
-    "CompatAgent",
-  );
+  const securityWorkflow = createSecurityWorkflow(modelConfig);
 
-  // 2. Build the Graph
-  const workflow = new StateGraph(InspectorAnnotation)
-    .addNode("spec", specAgent)
-    .addNode("security", securitySubgraph)
-    .addNode("compatibility", compatAgent)
-    .addEdge(START, "spec")
-    .addEdge("spec", "security")
-    .addEdge("security", "compatibility")
-    .addEdge("compatibility", END);
+  const specStep = createStep({
+    id: "spec",
+    inputSchema: z.object({
+      skill: SkillSchema,
+      debug: z.boolean().optional(),
+    }),
+    outputSchema: StepOutputSchema,
+    execute: async ({ getInitData }) => {
+      const { skill } = getInitData<{ skill: Skill }>();
+      const result = await specAgent.generate(
+        `Validate the skill at ${skill.path}. Content:\n${skill.content}`,
+        {
+          structuredOutput: {
+            schema: InspectionOutputSchema,
+          },
+        },
+      );
+      return {
+        findings: result.object.findings.map((f) => ({
+          ...f,
+          agent: "SpecAgent",
+        })),
+      };
+    },
+  });
 
-  return workflow.compile();
+  const securityStep = createStep({
+    id: "security",
+    inputSchema: StepOutputSchema,
+    outputSchema: StepOutputSchema,
+    execute: async ({ getInitData, mastra }) => {
+      const { skill } = getInitData<{ skill: Skill }>();
+      const result = await (
+        mastra!.getWorkflow("security-audit") as unknown as {
+          execute: (args: {
+            inputData: { skillPath: string; skillContent: string };
+          }) => Promise<{
+            results: Record<string, { findings: Finding[] }>;
+          }>;
+        }
+      ).execute({
+        inputData: {
+          skillPath: skill.path,
+          skillContent: skill.content,
+        },
+      });
+
+      const allFindings: Finding[] = [];
+      const results = result.results;
+      if (results.explore?.findings) {
+        allFindings.push(
+          ...results.explore.findings.map((f) => ({
+            ...f,
+            agent: "SecurityExplorer",
+          })),
+        );
+      }
+      if (results.audit?.findings) {
+        allFindings.push(
+          ...results.audit.findings.map((f) => ({
+            ...f,
+            agent: "SecurityAuditor",
+          })),
+        );
+      }
+
+      return { findings: allFindings };
+    },
+  });
+
+  const compatStep = createStep({
+    id: "compatibility",
+    inputSchema: StepOutputSchema,
+    outputSchema: StepOutputSchema,
+    execute: async ({ getInitData }) => {
+      const { skill } = getInitData<{ skill: Skill }>();
+      const result = await compatAgent.generate(
+        `Check compatibility for the skill. Content:\n${skill.content}`,
+        {
+          structuredOutput: {
+            schema: InspectionOutputSchema,
+          },
+        },
+      );
+      return {
+        findings: result.object.findings.map((f) => ({
+          ...f,
+          agent: "CompatAgent",
+        })),
+      };
+    },
+  });
+
+  const mainWorkflow = new Workflow({
+    id: "skill-inspector-main",
+    inputSchema: z.object({
+      skill: SkillSchema,
+      debug: z.boolean().optional(),
+    }),
+    outputSchema: z.object({
+      findings: z.array(FindingSchema),
+    }),
+  });
+
+  mainWorkflow.then(specStep).then(securityStep).then(compatStep).commit();
+
+  return { mainWorkflow, securityWorkflow };
 }
 
 /**
- * Orchestrator for sophisticated multi-agent inspection
+ * Orchestrator to run the inspection
  */
 export async function runInspectorWorkflow(
   skill: Skill,
-  model?: BaseChatModel,
   debug = false,
+  llmConfig?: Partial<LLMConfig>,
 ): Promise<InspectionReport> {
-  const llm = model || (await getChatModel());
-  const app = await createInspectorGraph(llm);
+  const modelConfig = getModelConfig(llmConfig);
+  const { mainWorkflow, securityWorkflow } =
+    createInspectorWorkflow(modelConfig);
 
-  const initialState = {
-    skillPath: skill.path,
-    skill,
-    messages: [],
-    findings: [],
-    score: 100,
-    errors: [],
-    model: llm,
-    debug,
-  };
+  const mastra = new Mastra({
+    workflows: {
+      "skill-inspector-main": mainWorkflow,
+      "security-audit": securityWorkflow,
+    },
+  });
 
-  const finalState = (await app.invoke(initialState)) as InspectorState;
+  const result = await (
+    mastra.getWorkflow("skill-inspector-main") as unknown as {
+      execute: (args: {
+        inputData: { skill: Skill; debug: boolean };
+      }) => Promise<{
+        results: Record<string, { findings: Finding[] }>;
+      }>;
+    }
+  ).execute({
+    inputData: {
+      skill,
+      debug,
+    },
+  });
 
-  // 3. Post-processing Score (Heuristic)
+  const allFindings: Finding[] = [];
+  const results = result.results;
+  if (results?.spec?.findings) allFindings.push(...results.spec.findings);
+  if (results?.security?.findings)
+    allFindings.push(...results.security.findings);
+  if (results?.compatibility?.findings)
+    allFindings.push(...results.compatibility.findings);
+
   let finalScore = 100;
-  for (const f of finalState.findings) {
+  for (const f of allFindings) {
     if (f.severity === "critical") finalScore -= 50;
     else if (f.severity === "high") finalScore -= 25;
     else if (f.severity === "medium") finalScore -= 10;
@@ -81,11 +204,11 @@ export async function runInspectorWorkflow(
   return {
     skillName: skill.name,
     overallScore: Math.max(0, finalScore),
-    findings: finalState.findings,
+    findings: allFindings,
     summary:
-      finalState.findings.length === 0
+      allFindings.length === 0
         ? "No issues found. Skill looks safe and compliant."
-        : `Found ${finalState.findings.length} potential issues across multiple agents.`,
+        : `Found ${allFindings.length} potential issues across multiple agents.`,
     timestamp: new Date().toISOString(),
   };
 }

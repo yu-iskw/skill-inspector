@@ -1,68 +1,87 @@
-import { StateGraph, START, END } from "@langchain/langgraph";
-import { createAgent } from "../agents/factory.js";
+import { Workflow, createStep } from "@mastra/core/workflows";
+import { z } from "zod";
+import {
+  createInspectorAgent,
+  InspectionOutputSchema,
+} from "../agents/factory.js";
 import { fileExplorer, skillReader } from "../agents/tools.js";
-import { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import { InspectorAnnotation } from "./state.js";
+import { FindingSchema, InspectorModelConfig } from "../core/types.js";
 
-/**
- * Security Deep Dive Subgraph
- * Uses Evaluator-Optimizer pattern for rigorous security analysis.
- */
-export async function createSecuritySubgraph(llm: BaseChatModel) {
-  const explorerAgent = createAgent(
-    llm,
-    [fileExplorer, skillReader],
-    `You are the Security Explorer. Your job is to map out the skill's environment.
+const SecurityStepOutputSchema = z.object({
+  findings: z.array(FindingSchema),
+});
+
+export function createSecurityWorkflow(model: InspectorModelConfig) {
+  const explorerAgent = createInspectorAgent({
+    name: "SecurityExplorer",
+    instructions: `You are the Security Explorer. Your job is to map out the skill's environment.
     Identify all scripts, external dependencies, and potential attack vectors.
     Look for hidden files or obfuscated code.`,
-    "SecurityExplorer",
-  );
+    model,
+    tools: { fileExplorer, skillReader },
+  });
 
-  const auditorAgent = createAgent(
-    llm,
-    [skillReader],
-    `You are the Security Auditor. Review the findings from the Explorer and the skill content.
+  const auditorAgent = createInspectorAgent({
+    name: "SecurityAuditor",
+    instructions: `You are the Security Auditor. Review the findings from the Explorer and the skill content.
     Identify specific vulnerabilities like RCE, Data Exfiltration, or Secret Theft.
     Provide detailed findings with severity.`,
-    "SecurityAuditor",
-  );
+    model,
+    tools: { skillReader },
+  });
 
-  const evaluatorAgent = createAgent(
-    llm,
-    [],
-    `You are the Security Evaluator. Your job is to review the Auditor's findings.
-    Are they accurate? Did they miss anything? Is the severity appropriate?
-    If the audit is incomplete, send it back for improvement.
-    If approved, finalize the security report.`,
-    "SecurityEvaluator",
-  );
+  const exploreStep = createStep({
+    id: "explore",
+    inputSchema: z.object({
+      skillPath: z.string(),
+      skillContent: z.string(),
+    }),
+    outputSchema: SecurityStepOutputSchema,
+    execute: async ({ inputData }) => {
+      const result = await explorerAgent.generate(
+        `Explore the skill at ${inputData.skillPath}. Content:\n${inputData.skillContent}`,
+        {
+          structuredOutput: {
+            schema: InspectionOutputSchema,
+          },
+        },
+      );
+      return { findings: result.object.findings };
+    },
+  });
 
-  const workflow = new StateGraph(InspectorAnnotation)
-    .addNode("explore", explorerAgent)
-    .addNode("audit", auditorAgent)
-    .addNode("evaluate", evaluatorAgent)
-    .addEdge(START, "explore")
-    .addEdge("explore", "audit")
-    .addEdge("audit", "evaluate")
-    // Logic for Evaluator-Optimizer could be a conditional edge
-    .addConditionalEdges(
-      "evaluate",
-      (state) => {
-        const lastMessage = state.messages[state.messages.length - 1];
-        if (
-          lastMessage &&
-          typeof lastMessage.content === "string" &&
-          lastMessage.content.includes("NEEDS_REVISION")
-        ) {
-          return "audit";
-        }
-        return END;
-      },
-      {
-        audit: "audit",
-        [END]: END,
-      },
-    );
+  const auditStep = createStep({
+    id: "audit",
+    inputSchema: SecurityStepOutputSchema, // Accept output from explore
+    outputSchema: SecurityStepOutputSchema,
+    execute: async ({ inputData, getInitData }) => {
+      const { skillContent } = getInitData<{
+        skillPath: string;
+        skillContent: string;
+      }>();
+      const explorationFindings = inputData.findings || [];
+      const result = await auditorAgent.generate(
+        `Audit the skill. Exploration findings: ${JSON.stringify(explorationFindings)}\nContent:\n${skillContent}`,
+        {
+          structuredOutput: {
+            schema: InspectionOutputSchema,
+          },
+        },
+      );
+      return { findings: result.object.findings };
+    },
+  });
 
-  return workflow.compile();
+  const securityWorkflow = new Workflow({
+    id: "security-audit",
+    inputSchema: z.object({
+      skillPath: z.string(),
+      skillContent: z.string(),
+    }),
+    outputSchema: SecurityStepOutputSchema,
+  });
+
+  securityWorkflow.then(exploreStep).then(auditStep).commit();
+
+  return securityWorkflow;
 }

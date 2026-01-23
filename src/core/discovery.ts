@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import matter from "gray-matter";
 import { simpleGit } from "simple-git";
-import { Skill, SkillFrontmatterSchema } from "./types.js";
+import { Skill } from "./types.js";
 
 const STANDARD_SKILL_PATHS = [
   "SKILL.md",
@@ -83,22 +83,18 @@ async function parseSkillFile(filePath: string): Promise<Skill | null> {
   const content = await fs.readFile(filePath, "utf-8");
   const { data, content: markdownBody } = matter(content);
 
-  // Use Zod to validate frontmatter
-  const parsedFrontmatter = SkillFrontmatterSchema.safeParse(data);
-
-  if (!parsedFrontmatter.success) {
-    // We still return it but with errors noted elsewhere if needed
-    // For now, let's just return a partial or throw if critical
+  // Basic validation of frontmatter
+  if (!data.name || !data.description) {
     throw new Error(
-      `Invalid frontmatter in ${filePath}: ${parsedFrontmatter.error.message}`,
+      `Invalid frontmatter in ${filePath}: name and description are required`,
     );
   }
 
   return {
     path: filePath,
-    name: parsedFrontmatter.data.name,
-    description: parsedFrontmatter.data.description,
-    frontmatter: parsedFrontmatter.data,
+    name: data.name,
+    description: data.description,
+    frontmatter: data,
     content: markdownBody,
   };
 }
