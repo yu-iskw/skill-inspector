@@ -73,7 +73,7 @@ IMPORTANT: You must respond with ONLY valid JSON in this exact format:
 {
   "findings": [
     {
-      "severity": "low" | "medium" | "high" | "critical",
+      "severity": "low",
       "message": "description of the finding",
       "fix": "optional fix suggestion"
     }
@@ -105,12 +105,20 @@ Do not include any markdown formatting, code blocks, or explanatory text. Return
       const parsed = JSON.parse(jsonText);
       return schema.parse(parsed);
     } catch (error) {
-      // If parsing fails, return empty findings
+      // If parsing fails, throw error to surface failure to workflow
+      const parseError =
+        error instanceof Error ? error : new Error(String(error));
+      const textSnippet =
+        text.length > 200 ? `${text.substring(0, 200)}...` : text;
       logger.error(
         "Failed to parse JSON from Google provider response",
-        error instanceof Error ? error : new Error(String(error)),
+        parseError,
       );
-      return { findings: [] };
+      throw new Error(
+        `Failed to parse JSON from Google provider response: ${parseError.message}. ` +
+          `This may occur when the model drifts from the expected JSON format. ` +
+          `Response snippet: ${textSnippet}`,
+      );
     }
   }
 
