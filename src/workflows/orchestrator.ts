@@ -13,13 +13,17 @@ import {
 import {
   createInspectorAgent,
   InspectionOutputSchema,
+  generateWithStructuredOutput,
 } from "../agents/factory.js";
 import { getModelConfig, LLMConfig } from "../core/llm.js";
 import { createSecurityWorkflow } from "./security.js";
 import { validateSpec } from "../core/validators.js";
+import { logger } from "../core/logger.js";
 
 const StepOutputSchema = z.object({
   findings: z.array(FindingSchema),
+  failed: z.boolean().optional(),
+  error: z.string().optional(),
 });
 
 /**
@@ -65,36 +69,77 @@ export function createInspectorWorkflow(
     inputSchema: StepOutputSchema,
     outputSchema: StepOutputSchema,
     execute: async ({ getInitData }) => {
-      const { skill } = getInitData<{ skill: Skill }>();
-      const run = await securityWorkflow.createRun();
-      const result = await run.start({
-        inputData: {
-          skillPath: skill.path,
-          skillContent: skill.content,
-        },
-      });
+      try {
+        const { skill } = getInitData<{ skill: Skill }>();
+        const run = await securityWorkflow.createRun();
+        const result = await run.start({
+          inputData: {
+            skillPath: skill.path,
+            skillContent: skill.content,
+          },
+        });
 
-      const allFindings: Finding[] = [];
-      const steps = result.steps as Record<
-        string,
-        { output?: { findings?: Finding[] } }
-      >;
+        const allFindings: Finding[] = [];
+        const steps = result.steps as Record<
+          string,
+          {
+            output?: {
+              findings?: Finding[];
+              failed?: boolean;
+              error?: string;
+            };
+          }
+        >;
 
-      for (const stepName in steps) {
-        const stepResult = steps[stepName];
-        if (stepResult?.output?.findings) {
-          allFindings.push(
-            ...stepResult.output.findings.map((f) => ({
-              ...f,
-              agent:
-                f.agent ||
-                `Security${stepName.charAt(0).toUpperCase()}${stepName.slice(1)}`,
-            })),
-          );
+        for (const stepName in steps) {
+          const stepResult = steps[stepName];
+          if (stepResult?.output?.findings) {
+            allFindings.push(
+              ...stepResult.output.findings.map((f) => ({
+                ...f,
+                agent:
+                  f.agent ||
+                  `Security${stepName.charAt(0).toUpperCase()}${stepName.slice(1)}`,
+              })),
+            );
+          }
         }
-      }
 
-      return { findings: allFindings };
+        // Check if any security workflow step failed
+        const failedSteps: string[] = [];
+        const errors: string[] = [];
+        for (const stepName in steps) {
+          const stepResult = steps[stepName];
+          if (stepResult?.output?.failed) {
+            failedSteps.push(`security.${stepName}`);
+            if (stepResult.output.error) {
+              errors.push(`security.${stepName}: ${stepResult.output.error}`);
+            }
+          }
+        }
+
+        if (failedSteps.length > 0) {
+          return {
+            findings: allFindings,
+            failed: true,
+            error: `Security workflow steps failed: ${failedSteps.join(", ")}`,
+          };
+        }
+
+        return { findings: allFindings };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logger.error(
+          "Error in security step",
+          error instanceof Error ? error : new Error(errorMessage),
+        );
+        return {
+          findings: [],
+          failed: true,
+          error: errorMessage,
+        };
+      }
     },
   });
 
@@ -103,21 +148,34 @@ export function createInspectorWorkflow(
     inputSchema: StepOutputSchema,
     outputSchema: StepOutputSchema,
     execute: async ({ getInitData }) => {
-      const { skill } = getInitData<{ skill: Skill }>();
-      const result = await compatAgent.generate(
-        `Check compatibility for the skill. Content:\n${skill.content}`,
-        {
-          structuredOutput: {
-            schema: InspectionOutputSchema,
-          },
-        },
-      );
-      return {
-        findings: result.object.findings.map((f) => ({
-          ...f,
-          agent: "CompatAgent",
-        })),
-      };
+      try {
+        const { skill } = getInitData<{ skill: Skill }>();
+        const result = await generateWithStructuredOutput(
+          compatAgent,
+          `Check compatibility for the skill. Content:\n${skill.content}`,
+          InspectionOutputSchema,
+          modelConfig,
+          false, // no tools
+        );
+        return {
+          findings: result.findings.map((f) => ({
+            ...f,
+            agent: "CompatAgent",
+          })),
+        };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logger.error(
+          "Error in compatibility step",
+          error instanceof Error ? error : new Error(errorMessage),
+        );
+        return {
+          findings: [],
+          failed: true,
+          error: errorMessage,
+        };
+      }
     },
   });
 
@@ -168,17 +226,33 @@ export async function runInspectorWorkflow(
   });
 
   const allFindings: Finding[] = [];
+  const failedSteps: string[] = [];
+  const errors: string[] = [];
   const steps = result.steps as Record<
     string,
-    { output?: { findings?: Finding[] } }
+    {
+      output?: {
+        findings?: Finding[];
+        failed?: boolean;
+        error?: string;
+      };
+    }
   >;
 
   for (const stepName in steps) {
     const stepResult = steps[stepName];
+    if (stepResult?.output?.failed) {
+      failedSteps.push(stepName);
+      if (stepResult.output.error) {
+        errors.push(`${stepName}: ${stepResult.output.error}`);
+      }
+    }
     if (stepResult?.output?.findings) {
       allFindings.push(...stepResult.output.findings);
     }
   }
+
+  const incomplete = failedSteps.length > 0;
 
   let finalScore = 100;
   for (const f of allFindings) {
@@ -192,10 +266,14 @@ export async function runInspectorWorkflow(
     skillName: skill.name,
     overallScore: Math.max(0, finalScore),
     findings: allFindings,
-    summary:
-      allFindings.length === 0
+    summary: incomplete
+      ? `Inspection incomplete: ${failedSteps.length} step(s) failed. Cannot provide reliable score.`
+      : allFindings.length === 0
         ? "No issues found. Skill looks safe and compliant."
         : `Found ${allFindings.length} potential issues across multiple agents.`,
     timestamp: new Date().toISOString(),
+    incomplete,
+    failedSteps: incomplete ? failedSteps : undefined,
+    errors: incomplete && errors.length > 0 ? errors : undefined,
   };
 }

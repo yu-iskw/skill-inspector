@@ -77,15 +77,15 @@ skill-inspector inspect ./my-skill --debug
 
 The inspector supports multiple providers. Set your API keys as environment variables:
 
-| Provider             | Default Model               | API Key Env Var                                   |
-| :------------------- | :-------------------------- | :------------------------------------------------ |
-| **OpenAI**           | `gpt-5.2`                   | `OPENAI_API_KEY`                                  |
-| **Anthropic**        | `claude-4.5-haiku@20260315` | `ANTHROPIC_API_KEY`                               |
-| **Google AI**        | `gemini-2.5-flash`          | `GOOGLE_API_KEY`                                  |
-| **Mistral**          | `mistral-large-latest`      | `MISTRAL_API_KEY`                                 |
-| **Groq**             | `llama-4-70b`               | `GROQ_API_KEY`                                    |
-| **Vertex AI**        | `gemini-2.5-flash`          | `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION` |
-| **Anthropic Vertex** | `claude-4.5-haiku@20260315` | `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION` |
+| Provider             | CLI Value          | Default Model               | API Key Env Var                                   |
+| :------------------- | :----------------- | :-------------------------- | :------------------------------------------------ |
+| **OpenAI**           | `openai`           | `gpt-5-mini`                | `OPENAI_API_KEY`                                  |
+| **Anthropic**        | `anthropic`        | `claude-4-5-haiku@20260315` | `ANTHROPIC_API_KEY`                               |
+| **Google AI**        | `google`           | `gemini-2.5-flash`          | `GOOGLE_API_KEY`                                  |
+| **Mistral**          | `mistral`          | `mistral-small-latest`      | `MISTRAL_API_KEY`                                 |
+| **Groq**             | `groq`             | `llama-4-scout-17b`         | `GROQ_API_KEY`                                    |
+| **Vertex AI**        | `google-vertex`    | `gemini-2.5-flash`          | `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION` |
+| **Anthropic Vertex** | `anthropic-vertex` | `claude-4-5-haiku@20260315` | `GOOGLE_VERTEX_PROJECT`, `GOOGLE_VERTEX_LOCATION` |
 
 ## Documentation
 

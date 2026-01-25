@@ -39,6 +39,9 @@ export interface InspectionReport {
   findings: Finding[];
   summary: string;
   timestamp: string;
+  incomplete?: boolean;
+  failedSteps?: string[];
+  errors?: string[];
 }
 
 /**

@@ -1,6 +1,6 @@
 {
   "name": "skill-inspector",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI tool to inspect Agent Skills for malicious behaviors",
   "keywords": [
     "agent",
@@ -24,7 +24,12 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.23",
+    "@ai-sdk/google": "^3.0.13",
     "@ai-sdk/google-vertex": "^4.0.28",
+    "@ai-sdk/groq": "^1.0.0",
+    "@ai-sdk/mistral": "^1.0.0",
+    "@ai-sdk/openai": "^3.0.18",
     "@clack/prompts": "^0.11.0",
     "@mastra/core": "^1.0.4",
     "chalk": "^5.6.2",

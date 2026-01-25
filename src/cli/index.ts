@@ -20,34 +20,77 @@ function printReport(report: InspectionReport, isJson: boolean) {
     return;
   }
 
-  const color =
-    report.overallScore > 80
-      ? chalk.green
-      : report.overallScore > 50
-        ? chalk.yellow
-        : chalk.red;
+  if (report.incomplete) {
+    // Incomplete inspection - show warning
+    console.log(
+      `\n${chalk.bold("Overall Score:")} ${chalk.yellow("INCOMPLETE")}`,
+    );
+    console.log(`${chalk.bold("Summary:")} ${chalk.yellow(report.summary)}`);
 
-  console.log(
-    `\n${chalk.bold("Overall Score:")} ${color(report.overallScore)}/100`,
-  );
-  console.log(`${chalk.bold("Summary:")} ${report.summary}`);
+    if (report.failedSteps && report.failedSteps.length > 0) {
+      console.log(`\n${chalk.bold("Failed Steps:")}`);
+      report.failedSteps.forEach((step) => {
+        console.log(`  ${chalk.red("✗")} ${step}`);
+      });
+    }
 
-  if (report.findings.length > 0) {
-    console.log(`\n${chalk.bold("Findings:")}`);
-    report.findings.forEach((f) => {
-      const severityColor =
-        f.severity === "critical"
-          ? chalk.bgRed.white
-          : f.severity === "high"
-            ? chalk.red
-            : f.severity === "medium"
-              ? chalk.yellow
-              : chalk.blue;
+    if (report.errors && report.errors.length > 0) {
+      console.log(`\n${chalk.bold("Errors:")}`);
+      report.errors.forEach((error) => {
+        console.log(`  ${chalk.red(error)}`);
+      });
+    }
+
+    if (report.findings.length > 0) {
       console.log(
-        `- [${f.agent}] ${severityColor(f.severity.toUpperCase())}: ${f.message}`,
+        `\n${chalk.bold("Partial Findings (from completed steps):")}`,
       );
-      if (f.fix) console.log(`  ${chalk.gray("Fix:")} ${f.fix}`);
-    });
+      report.findings.forEach((f) => {
+        const severityColor =
+          f.severity === "critical"
+            ? chalk.bgRed.white
+            : f.severity === "high"
+              ? chalk.red
+              : f.severity === "medium"
+                ? chalk.yellow
+                : chalk.blue;
+        console.log(
+          `- [${f.agent}] ${severityColor(f.severity.toUpperCase())}: ${f.message}`,
+        );
+        if (f.fix) console.log(`  ${chalk.gray("Fix:")} ${f.fix}`);
+      });
+    }
+  } else {
+    // Complete inspection
+    const color =
+      report.overallScore > 80
+        ? chalk.green
+        : report.overallScore > 50
+          ? chalk.yellow
+          : chalk.red;
+
+    console.log(
+      `\n${chalk.bold("Overall Score:")} ${color(report.overallScore)}/100`,
+    );
+    console.log(`${chalk.bold("Summary:")} ${report.summary}`);
+
+    if (report.findings.length > 0) {
+      console.log(`\n${chalk.bold("Findings:")}`);
+      report.findings.forEach((f) => {
+        const severityColor =
+          f.severity === "critical"
+            ? chalk.bgRed.white
+            : f.severity === "high"
+              ? chalk.red
+              : f.severity === "medium"
+                ? chalk.yellow
+                : chalk.blue;
+        console.log(
+          `- [${f.agent}] ${severityColor(f.severity.toUpperCase())}: ${f.message}`,
+        );
+        if (f.fix) console.log(`  ${chalk.gray("Fix:")} ${f.fix}`);
+      });
+    }
   }
   console.log("\n" + chalk.gray("=".repeat(40)) + "\n");
 }

@@ -3,13 +3,17 @@ import { z } from "zod";
 import {
   createInspectorAgent,
   InspectionOutputSchema,
+  generateWithStructuredOutput,
 } from "../agents/factory.js";
 import { securityAgentInstructions } from "../agents/security.js";
 import { createFileExplorer, createSkillReader } from "../agents/tools.js";
 import { FindingSchema, InspectorModelConfig } from "../core/types.js";
+import { logger } from "../core/logger.js";
 
 const SecurityStepOutputSchema = z.object({
   findings: z.array(FindingSchema),
+  failed: z.boolean().optional(),
+  error: z.string().optional(),
 });
 
 export function createSecurityWorkflow(
@@ -51,15 +55,28 @@ export function createSecurityWorkflow(
     }),
     outputSchema: SecurityStepOutputSchema,
     execute: async ({ inputData }) => {
-      const result = await explorerAgent.generate(
-        `Explore the skill at ${inputData.skillPath}. Content:\n${inputData.skillContent}`,
-        {
-          structuredOutput: {
-            schema: InspectionOutputSchema,
-          },
-        },
-      );
-      return { findings: result.object.findings };
+      try {
+        const result = await generateWithStructuredOutput(
+          explorerAgent,
+          `Explore the skill at ${inputData.skillPath}. Content:\n${inputData.skillContent}`,
+          InspectionOutputSchema,
+          model,
+          true, // has tools (fileExplorer, skillReader)
+        );
+        return { findings: result.findings };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logger.error(
+          `Error in security explore step for ${inputData.skillPath}`,
+          error instanceof Error ? error : new Error(errorMessage),
+        );
+        return {
+          findings: [],
+          failed: true,
+          error: errorMessage,
+        };
+      }
     },
   });
 
@@ -68,20 +85,33 @@ export function createSecurityWorkflow(
     inputSchema: SecurityStepOutputSchema, // Accept output from explore
     outputSchema: SecurityStepOutputSchema,
     execute: async ({ inputData, getInitData }) => {
-      const { skillContent } = getInitData<{
-        skillPath: string;
-        skillContent: string;
-      }>();
-      const explorationFindings = inputData.findings || [];
-      const result = await auditorAgent.generate(
-        `Audit the skill. Exploration findings: ${JSON.stringify(explorationFindings)}\nContent:\n${skillContent}`,
-        {
-          structuredOutput: {
-            schema: InspectionOutputSchema,
-          },
-        },
-      );
-      return { findings: result.object.findings };
+      try {
+        const { skillContent } = getInitData<{
+          skillPath: string;
+          skillContent: string;
+        }>();
+        const explorationFindings = inputData.findings || [];
+        const result = await generateWithStructuredOutput(
+          auditorAgent,
+          `Audit the skill. Exploration findings: ${JSON.stringify(explorationFindings)}\nContent:\n${skillContent}`,
+          InspectionOutputSchema,
+          model,
+          true, // has tools (skillReader)
+        );
+        return { findings: result.findings };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logger.error(
+          "Error in security audit step",
+          error instanceof Error ? error : new Error(errorMessage),
+        );
+        return {
+          findings: [],
+          failed: true,
+          error: errorMessage,
+        };
+      }
     },
   });
 
