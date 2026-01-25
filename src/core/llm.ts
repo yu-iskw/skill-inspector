@@ -1,5 +1,10 @@
 import { z } from "zod";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createVertex } from "@ai-sdk/google-vertex";
+import { createGroq } from "@ai-sdk/groq";
+import { createMistral } from "@ai-sdk/mistral";
+import { createOpenAI } from "@ai-sdk/openai";
 import { InspectorModelConfig } from "./types.js";
 
 export const LLMProviderSchema = z.enum([
@@ -103,8 +108,33 @@ export function getModelConfig(
     apiKey: validated.apiKey,
   };
 
-  // 5. Handle provider-specific extras
-  if (provider === "google-vertex") {
+  // 5. Create model instances for all providers
+  if (provider === "google") {
+    const googleProvider = createGoogleGenerativeAI({
+      apiKey: validated.apiKey!,
+    });
+    modelConfig.modelInstance = googleProvider(validated.model!);
+  } else if (provider === "anthropic") {
+    const anthropicProvider = createAnthropic({
+      apiKey: validated.apiKey!,
+    });
+    modelConfig.modelInstance = anthropicProvider(validated.model!);
+  } else if (provider === "openai") {
+    const openaiProvider = createOpenAI({
+      apiKey: validated.apiKey!,
+    });
+    modelConfig.modelInstance = openaiProvider(validated.model!);
+  } else if (provider === "groq") {
+    const groqProvider = createGroq({
+      apiKey: validated.apiKey!,
+    });
+    modelConfig.modelInstance = groqProvider(validated.model!);
+  } else if (provider === "mistral") {
+    const mistralProvider = createMistral({
+      apiKey: validated.apiKey!,
+    });
+    modelConfig.modelInstance = mistralProvider(validated.model!);
+  } else if (provider === "google-vertex") {
     const projectId = process.env.GOOGLE_VERTEX_PROJECT;
     const location = process.env.GOOGLE_VERTEX_LOCATION || "us-central1";
 
@@ -132,6 +162,8 @@ export function getModelConfig(
     }
     modelConfig.projectId = projectId;
     modelConfig.location = process.env.GOOGLE_VERTEX_LOCATION || "us-central1";
+    // Note: anthropic-vertex may need model instance creation similar to google-vertex
+    // This depends on the @ai-sdk/anthropic-vertex package if it exists
   }
 
   return modelConfig;
