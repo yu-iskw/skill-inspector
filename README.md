@@ -73,6 +73,19 @@ skill-inspector inspect ./my-skill --json
 skill-inspector inspect ./my-skill --debug
 ```
 
+## Inspect-Skills Agent Skill
+
+This repository includes an **Agent Skill** ([skills/inspect-skills](./skills/inspect-skills/)) that lets AI coding agents (e.g. Cursor, Claude Code) run the inspector from within a session. Use it when you want an agent to validate skills, audit for security, or check spec compliance.
+
+- **List skills** (no API key): run the skill’s `scripts/list-skills.sh` with a path or `owner/repo`.
+- **Full inspection**: run `scripts/inspect.sh` with the same source and optional flags (e.g. `--provider`, `--json`). At least one LLM API key is required.
+
+You can use the skill from this repo’s `skills/inspect-skills/` directory, or install it with `npx skills`:
+
+```bash
+npx skills install skills/inspect-skills
+```
+
 ## LLM Configuration
 
 The inspector supports multiple providers. Set your API keys as environment variables:
