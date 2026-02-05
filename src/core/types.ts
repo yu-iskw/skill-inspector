@@ -36,12 +36,12 @@ export interface Skill {
 export interface InspectionReport {
   skillName: string;
   overallScore: number;
-  findings: Finding[];
+  findings: Array<Finding>;
   summary: string;
   timestamp: string;
   incomplete?: boolean;
-  failedSteps?: string[];
-  errors?: string[];
+  failedSteps?: Array<string>;
+  errors?: Array<string>;
 }
 
 /**
@@ -50,10 +50,10 @@ export interface InspectionReport {
 export interface InspectorState {
   skillPath: string;
   skill?: Skill;
-  findings: Finding[];
+  findings: Array<Finding>;
   score: number;
   report?: InspectionReport;
-  errors: string[];
+  errors: Array<string>;
   debug?: boolean;
   usage: {
     promptTokens: number;

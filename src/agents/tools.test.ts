@@ -51,7 +51,7 @@ describe("custom tools", () => {
       const result = (await (fileExplorer as any).execute(
         { directoryPath },
         {},
-      )) as { files: string[] };
+      )) as { files: Array<string> };
 
       expect(result.files).toContain("[FILE] SKILL.md");
     });
