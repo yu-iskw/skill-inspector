@@ -65,7 +65,7 @@ const RemotePathSchema = z
  */
 export async function discoverSkills(
   inputPath: string,
-): Promise<{ skills: Skill[]; tempDir?: string }> {
+): Promise<{ skills: Array<Skill>; tempDir?: string }> {
   let searchDir = inputPath;
   let tempDir = "";
 
@@ -106,7 +106,7 @@ export async function discoverSkills(
       }
     }
 
-    const skills: Skill[] = [];
+    const skills: Array<Skill> = [];
     const stats = await fs.stat(searchDir);
 
     if (stats.isFile() && searchDir.endsWith("SKILL.md")) {
@@ -222,8 +222,8 @@ async function parseSkillFile(filePath: string): Promise<Skill | null> {
   };
 }
 
-async function findSkillFilesRecursive(dir: string): Promise<string[]> {
-  const results: string[] = [];
+async function findSkillFilesRecursive(dir: string): Promise<Array<string>> {
+  const results: Array<string> = [];
   const entries = await fs.readdir(dir, { withFileTypes: true });
 
   for (const entry of entries) {

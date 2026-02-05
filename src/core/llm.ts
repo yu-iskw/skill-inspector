@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createVertex } from "@ai-sdk/google-vertex";
+import { createVertexAnthropic } from "@ai-sdk/google-vertex/anthropic";
 import { createGroq } from "@ai-sdk/groq";
 import { createMistral } from "@ai-sdk/mistral";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -37,23 +38,23 @@ export type LLMConfig = z.infer<typeof LLMConfigSchema>;
 function getDefaultModel(provider: LLMProvider): string {
   switch (provider) {
     case "openai":
-      return "gpt-5-mini";
+      return "gpt-4o-mini";
     case "anthropic":
-      return "claude-4-5-haiku@20260315";
+      return "claude-3-5-haiku-latest";
     case "google":
-      return "gemini-2.5-flash";
+      return "gemini-2.0-flash";
     case "google-vertex":
-      return "gemini-2.5-flash";
+      return "gemini-2.0-flash";
     case "anthropic-vertex":
-      return "claude-4-5-haiku@20260315";
+      return "claude-3-5-haiku-latest";
     case "mistral":
       return "mistral-small-latest";
     case "groq":
-      return "llama-4-scout-17b";
+      return "llama-3.1-8b-instant";
     case "mock":
       return "mock-model";
     default:
-      return "gpt-5-mini";
+      return "gpt-4o-mini";
   }
 }
 
@@ -72,7 +73,7 @@ export function getModelConfig(
   // 2. Resolve API key
   const apiKey = config?.apiKey || getEnvApiKey(provider);
 
-  const providersRequiringApiKey: LLMProvider[] = [
+  const providersRequiringApiKey: Array<LLMProvider> = [
     "openai",
     "anthropic",
     "google",
@@ -155,15 +156,23 @@ export function getModelConfig(
     modelConfig.modelInstance = vertex(validated.model!);
   } else if (provider === "anthropic-vertex") {
     const projectId = process.env.GOOGLE_VERTEX_PROJECT;
+    const location = process.env.GOOGLE_VERTEX_LOCATION || "us-central1";
+
     if (!projectId) {
       throw new Error(
         "Google Vertex project ID is missing. Please set the GOOGLE_VERTEX_PROJECT environment variable.",
       );
     }
+
     modelConfig.projectId = projectId;
-    modelConfig.location = process.env.GOOGLE_VERTEX_LOCATION || "us-central1";
-    // Note: anthropic-vertex may need model instance creation similar to google-vertex
-    // This depends on the @ai-sdk/anthropic-vertex package if it exists
+    modelConfig.location = location;
+
+    const vertexAnthropic = createVertexAnthropic({
+      project: projectId,
+      location,
+    });
+
+    modelConfig.modelInstance = vertexAnthropic(validated.model!);
   }
 
   return modelConfig;

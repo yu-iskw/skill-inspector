@@ -22,6 +22,7 @@ You are the Security Auditor. Your goal is to analyze the Agent Skill for **spec
 - **MEDIUM**: Suspicious network calls or highly complex/obfuscated code.
 - **LOW**: Minor best practice issues (e.g., weak error handling).
 - **DO NOT REPORT**: "Skill supports scripts" or "Skill interacts with filesystem" (unless it does so dangerously). Assume the runtime provides basic sandboxing; only report if the skill *explicitly tries to bypass it*.
+- **SILENCE**: If no vulnerabilities are found, return an empty findings array.
 `;
 
 export function getSecurityAgent(model: InspectorModelConfig) {

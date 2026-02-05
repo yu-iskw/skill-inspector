@@ -32,13 +32,15 @@ export function createInspectorAgent({
  * Common output schema for inspection agents
  */
 export const InspectionOutputSchema = z.object({
-  findings: z.array(
-    z.object({
-      severity: z.enum(["low", "medium", "high", "critical"]),
-      message: z.string(),
-      fix: z.string().optional().describe("Proposed fix if available"),
-    }),
-  ),
+  findings: z
+    .array(
+      z.object({
+        severity: z.enum(["low", "medium", "high", "critical"]),
+        message: z.string(),
+        fix: z.string().optional().describe("Proposed fix if available"),
+      }),
+    )
+    .default([]),
 });
 
 export type InspectionOutput = z.infer<typeof InspectionOutputSchema>;
@@ -102,6 +104,12 @@ Do not include any markdown formatting, code blocks, or explanatory text. Return
     }
 
     try {
+      // If the model returned an empty string or just whitespace, treat it as an empty object
+      // which will default to an empty findings array via the schema
+      if (!jsonText.trim()) {
+        return schema.parse({});
+      }
+
       const parsed = JSON.parse(jsonText);
       return schema.parse(parsed);
     } catch (error) {

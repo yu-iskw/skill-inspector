@@ -28,8 +28,8 @@ const SkillFrontmatterSchema = z.object({
 /**
  * Deterministically validate a skill against the specification
  */
-export function validateSpec(skill: Skill): Finding[] {
-  const findings: Finding[] = [];
+export function validateSpec(skill: Skill): Array<Finding> {
+  const findings: Array<Finding> = [];
 
   // 1. Validate Frontmatter
   const result = SkillFrontmatterSchema.safeParse(skill.frontmatter);

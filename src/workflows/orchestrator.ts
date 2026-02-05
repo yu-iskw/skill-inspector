@@ -79,12 +79,12 @@ export function createInspectorWorkflow(
           },
         });
 
-        const allFindings: Finding[] = [];
+        const allFindings: Array<Finding> = [];
         const steps = result.steps as Record<
           string,
           {
             output?: {
-              findings?: Finding[];
+              findings?: Array<Finding>;
               failed?: boolean;
               error?: string;
             };
@@ -106,8 +106,8 @@ export function createInspectorWorkflow(
         }
 
         // Check if any security workflow step failed
-        const failedSteps: string[] = [];
-        const errors: string[] = [];
+        const failedSteps: Array<string> = [];
+        const errors: Array<string> = [];
         for (const stepName in steps) {
           const stepResult = steps[stepName];
           if (stepResult?.output?.failed) {
@@ -225,14 +225,14 @@ export async function runInspectorWorkflow(
     },
   });
 
-  const allFindings: Finding[] = [];
-  const failedSteps: string[] = [];
-  const errors: string[] = [];
+  const allFindings: Array<Finding> = [];
+  const failedSteps: Array<string> = [];
+  const errors: Array<string> = [];
   const steps = result.steps as Record<
     string,
     {
       output?: {
-        findings?: Finding[];
+        findings?: Array<Finding>;
         failed?: boolean;
         error?: string;
       };
