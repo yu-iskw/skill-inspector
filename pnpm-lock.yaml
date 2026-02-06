@@ -14,7 +14,7 @@ importers:
     dependencies:
       '@ai-sdk/anthropic':
         specifier: ^3.0.23
-        version: 3.0.23(zod@4.3.6)
+        version: 3.0.36(zod@4.3.6)
       '@ai-sdk/google':
         specifier: ^3.0.13
         version: 3.0.13(zod@4.3.6)
@@ -88,6 +88,12 @@ packages:
 
   '@ai-sdk/anthropic@3.0.23':
     resolution: {integrity: sha512-mu9djDW2kiJS/ihH5BwGy2c/zwSlcTjx1NWPvY/Ug12SWToqzozSyd1EIXRlfXyfwzL2CWrqMNyybqi9OVDXgg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/anthropic@3.0.36':
+    resolution: {integrity: sha512-GHQccfwC0j1JltN9M47RSlBpOyHoUam0mvbYMf8zpE0UD1tzIX5sDw2m/8nRlrTz6wGuKfaDxmoC3XH7uhTrXg==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -2010,6 +2016,12 @@ snapshots:
     dependencies:
       '@ai-sdk/provider': 3.0.5
       '@ai-sdk/provider-utils': 4.0.9(zod@4.3.6)
+      zod: 4.3.6
+
+  '@ai-sdk/anthropic@3.0.36(zod@4.3.6)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.7
+      '@ai-sdk/provider-utils': 4.0.13(zod@4.3.6)
       zod: 4.3.6
 
   '@ai-sdk/google-vertex@4.0.28(zod@4.3.6)':
