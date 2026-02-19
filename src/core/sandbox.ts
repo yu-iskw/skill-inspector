@@ -1,14 +1,26 @@
 import Docker from "dockerode";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { PassThrough } from "node:stream";
+import { fileURLToPath } from "node:url";
 import { logger } from "./logger.js";
+
+// Read the package version at runtime so the image tag always matches the
+// installed npm package, regardless of which version the user has installed.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const { version: PKG_VERSION } = JSON.parse(
+  readFileSync(join(__dirname, "../../package.json"), "utf8"),
+) as { version: string };
 
 /**
  * The container image used for sandbox mode.
+ * The tag is pinned to the installed package version so that the npm package
+ * and the container image are always in sync.
  * Override via SKILL_INSPECTOR_SANDBOX_IMAGE env var (e.g. for local builds).
  */
 const SANDBOX_IMAGE =
   process.env.SKILL_INSPECTOR_SANDBOX_IMAGE ??
-  "ghcr.io/yu-iskw/skill-inspector:0.1.2";
+  `ghcr.io/yu-iskw/skill-inspector:${PKG_VERSION}`;
 
 /**
  * LLM provider API key env vars forwarded into the container.
