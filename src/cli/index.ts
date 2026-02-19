@@ -108,6 +108,11 @@ program
   .option("--json", "Output results in JSON format")
   .option("--debug", "Show detailed agent logs and thoughts", false)
   .option("--stack-trace", "Show stack trace on error", false)
+  .option(
+    "--sandbox",
+    "Clone remote repos in-memory (isomorphic-git + memfs) so no arbitrary repo files touch the host filesystem. Only SKILL.md content is written to a temp dir. Requires no extra setup — pure Node.js.",
+    false,
+  )
   .action(async (source = ".", options) => {
     // Configure logger
     logger.setJson(!!options.json);
@@ -117,7 +122,9 @@ program
     try {
       logger.info(`Searching for skills in: ${source}...`);
 
-      const discovery = await discoverSkills(source);
+      const discovery = await discoverSkills(source, {
+        sandbox: !!options.sandbox,
+      });
       const skills = discovery.skills;
       tempDir = discovery.tempDir;
 

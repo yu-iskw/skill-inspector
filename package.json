@@ -36,6 +36,8 @@
     "commander": "^14.0.2",
     "dotenv": "^17.2.3",
     "gray-matter": "^4.0.3",
+    "isomorphic-git": "^1.37.1",
+    "memfs": "^4.56.10",
     "simple-git": "^3.30.0",
     "zod": "^4.3.6"
   },
