@@ -1,6 +1,6 @@
 {
   "name": "skill-inspector",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "CLI tool to inspect Agent Skills for malicious behaviors",
   "keywords": [
     "agent",
