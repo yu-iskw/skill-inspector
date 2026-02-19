@@ -5,6 +5,7 @@ import { simpleGit } from "simple-git";
 import { Skill } from "./types.js";
 import { logger } from "./logger.js";
 import { z } from "zod";
+import { discoverSkillsInSandbox } from "./sandbox.js";
 
 const STANDARD_SKILL_PATHS = [
   "SKILL.md",
@@ -60,11 +61,22 @@ const RemotePathSchema = z
     },
   );
 
+export interface DiscoverOptions {
+  /**
+   * When true, remote repositories are cloned entirely in memory using
+   * isomorphic-git + memfs.  Only the discovered SKILL.md files are written
+   * to os.tmpdir(), so arbitrary repo content never touches the host
+   * filesystem.  No extra system tooling is required — pure Node.js.
+   */
+  sandbox?: boolean;
+}
+
 /**
  * Robustly find and parse a skill from a local or remote path
  */
 export async function discoverSkills(
   inputPath: string,
+  options: DiscoverOptions = {},
 ): Promise<{ skills: Array<Skill>; tempDir?: string }> {
   let searchDir = inputPath;
   let tempDir = "";
@@ -99,10 +111,20 @@ export async function discoverSkills(
           );
         }
 
-        tempDir = path.join(process.cwd(), `.temp-inspect-${Date.now()}`);
-        logger.debug(`Cloning remote repository: ${repoUrl} to ${tempDir}`);
-        await simpleGit().clone(repoUrl, tempDir, ["--depth", "1"]);
-        searchDir = tempDir;
+        if (options.sandbox) {
+          // ── Secure sandbox mode ──────────────────────────────────────────
+          // Clone into memory (isomorphic-git + memfs); only SKILL.md files
+          // are written to os.tmpdir() — no other repo content touches disk.
+          logger.info(`[sandbox] Fetching skills in-memory from: ${repoUrl}`);
+          const { skills, sandboxDir } = await discoverSkillsInSandbox(repoUrl);
+          return { skills, tempDir: sandboxDir };
+        } else {
+          // ── Legacy mode: shallow clone to CWD ───────────────────────────
+          tempDir = path.join(process.cwd(), `.temp-inspect-${Date.now()}`);
+          logger.debug(`Cloning remote repository: ${repoUrl} to ${tempDir}`);
+          await simpleGit().clone(repoUrl, tempDir, ["--depth", "1"]);
+          searchDir = tempDir;
+        }
       }
     }
 
