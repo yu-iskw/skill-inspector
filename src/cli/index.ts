@@ -6,6 +6,7 @@ import { discoverSkills } from "../core/discovery.js";
 import { InspectionReport } from "../core/types.js";
 import { runInspectorWorkflow } from "../workflows/orchestrator.js";
 import { logger } from "../core/logger.js";
+import { runInSandbox, DockerNotAvailableError } from "../core/sandbox.js";
 
 export const program = new Command();
 
@@ -95,6 +96,31 @@ function printReport(report: InspectionReport, isJson: boolean) {
   console.log("\n" + chalk.gray("=".repeat(40)) + "\n");
 }
 
+/**
+ * Reconstruct forwarded CLI args from parsed options to pass into the
+ * sandbox container. --sandbox itself is intentionally excluded to prevent
+ * infinite recursion (container → container).
+ */
+function buildForwardedArgs(options: {
+  list?: boolean;
+  skill?: string[];
+  provider?: string;
+  model?: string;
+  json?: boolean;
+  debug?: boolean;
+  stackTrace?: boolean;
+}): string[] {
+  const args: string[] = [];
+  if (options.list) args.push("--list");
+  if (options.skill) options.skill.forEach((s) => args.push("--skill", s));
+  if (options.provider) args.push("--provider", options.provider);
+  if (options.model) args.push("--model", options.model);
+  if (options.json) args.push("--json");
+  if (options.debug) args.push("--debug");
+  if (options.stackTrace) args.push("--stack-trace");
+  return args;
+}
+
 program
   .command("inspect [source]")
   .description("Inspect one or more skills")
@@ -108,10 +134,31 @@ program
   .option("--json", "Output results in JSON format")
   .option("--debug", "Show detailed agent logs and thoughts", false)
   .option("--stack-trace", "Show stack trace on error", false)
+  .option(
+    "--sandbox",
+    "Run inspection inside an isolated Docker container (requires Docker)",
+    false,
+  )
   .action(async (source = ".", options) => {
     // Configure logger
     logger.setJson(!!options.json);
     logger.setDebug(!!options.debug);
+
+    // --sandbox: delegate the entire inspection to a Docker container and exit.
+    // The container runs the same command without --sandbox to avoid recursion.
+    if (options.sandbox) {
+      try {
+        await runInSandbox(source, buildForwardedArgs(options));
+      } catch (error: unknown) {
+        if (error instanceof DockerNotAvailableError) {
+          logger.error(error.message);
+        } else {
+          logger.error("Sandbox launch failed", error);
+        }
+        process.exit(1);
+      }
+      return;
+    }
 
     let tempDir: string | undefined;
     try {
