@@ -122,7 +122,9 @@ program
     try {
       logger.info(`Searching for skills in: ${source}...`);
 
-      const discovery = await discoverSkills(source, { sandbox: !!options.sandbox });
+      const discovery = await discoverSkills(source, {
+        sandbox: !!options.sandbox,
+      });
       const skills = discovery.skills;
       tempDir = discovery.tempDir;
 

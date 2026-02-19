@@ -26,7 +26,10 @@ const MEM_CLONE_ROOT = "/repo";
  * Recursively find all SKILL.md files inside a memfs Volume.
  * Uses posix-style paths internally (memfs always uses `/`).
  */
-function findSkillsInVolume(vol: InstanceType<typeof Volume>, dir: string): string[] {
+function findSkillsInVolume(
+  vol: InstanceType<typeof Volume>,
+  dir: string,
+): string[] {
   const results: string[] = [];
 
   let rawEntries: (string | Buffer)[];
@@ -99,7 +102,9 @@ export async function discoverSkillsInSandbox(repoUrl: string): Promise<{
 
   // ── 2. Find SKILL.md files in memory ───────────────────────────────────────
   const memPaths = findSkillsInVolume(vol, MEM_CLONE_ROOT);
-  logger.debug(`[sandbox] Found ${memPaths.length} SKILL.md file(s) in memory.`);
+  logger.debug(
+    `[sandbox] Found ${memPaths.length} SKILL.md file(s) in memory.`,
+  );
 
   // ── 3. Write only SKILL.md content to os.tmpdir() ──────────────────────────
   const sandboxDir = path.join(os.tmpdir(), `.skill-sandbox-${Date.now()}`);
@@ -123,12 +128,16 @@ export async function discoverSkillsInSandbox(repoUrl: string): Promise<{
       frontmatter = parsed.data;
       markdownBody = parsed.content;
     } catch (err) {
-      logger.warn(`[sandbox] Failed to parse frontmatter in ${memPath}`, { err });
+      logger.warn(`[sandbox] Failed to parse frontmatter in ${memPath}`, {
+        err,
+      });
       continue;
     }
 
     if (!frontmatter.name || !frontmatter.description) {
-      logger.warn(`[sandbox] Skipping ${memPath}: missing required frontmatter (name, description)`);
+      logger.warn(
+        `[sandbox] Skipping ${memPath}: missing required frontmatter (name, description)`,
+      );
       continue;
     }
 

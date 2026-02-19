@@ -215,7 +215,7 @@ Embrace discriminated unions to model complex data structures and improve type s
 
 ### 4.5. Type-Safe Constants With Satisfies
 
-Use the `as const satisfies` syntax to combine strict type-checking and immutability for constants, ensuring they conform to a specific type while preserving narrowed inferred types.
+Use the `satisfies` operator to combine strict type-checking and immutability for constants, ensuring they conform to a specific type while preserving narrowed inferred types.
 
 ### 4.6. Template Literal Types
 
