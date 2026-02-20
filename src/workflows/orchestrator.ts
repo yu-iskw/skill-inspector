@@ -16,7 +16,10 @@ import { getModelConfig, LLMConfig } from "../core/llm.js";
 import { createSecurityWorkflow } from "./security.js";
 import { validateSpec } from "../core/validators.js";
 import { scanPatterns } from "../core/patternScanner.js";
-import { mapCompliance, getAffectedFrameworks } from "../core/complianceMapper.js";
+import {
+  mapCompliance,
+  getAffectedFrameworks,
+} from "../core/complianceMapper.js";
 import { logger } from "../core/logger.js";
 
 // ---------------------------------------------------------------------------
@@ -362,7 +365,8 @@ export async function runInspectorWorkflow(
     scoreRange,
     scoreBreakdown,
     findings: allFindings,
-    complianceFrameworks: complianceFrameworks.length > 0 ? complianceFrameworks : undefined,
+    complianceFrameworks:
+      complianceFrameworks.length > 0 ? complianceFrameworks : undefined,
     summary: summaryText,
     timestamp: new Date().toISOString(),
     incomplete,

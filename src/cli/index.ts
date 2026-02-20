@@ -43,7 +43,10 @@ function printFindings(
 }
 
 function printComplianceSummary(report: InspectionReport) {
-  if (!report.complianceFrameworks || report.complianceFrameworks.length === 0) {
+  if (
+    !report.complianceFrameworks ||
+    report.complianceFrameworks.length === 0
+  ) {
     console.log(chalk.green("  No compliance frameworks affected."));
     return;
   }

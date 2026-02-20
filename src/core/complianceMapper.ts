@@ -64,7 +64,9 @@ const MAPPING_RULES: MappingRule[] = [
   // ── LLM03: Supply Chain ───────────────────────────────────────────────────────
   // Remote code execution via curl/wget piped to shell.
   {
-    messagePatterns: [/curl-pipe-to-shell|wget-pipe-to-shell|remote code execution/i],
+    messagePatterns: [
+      /curl-pipe-to-shell|wget-pipe-to-shell|remote code execution/i,
+    ],
     refs: [
       {
         framework: "OWASP LLM Top 10",

@@ -44,7 +44,8 @@ const PATTERN_RULES: PatternRule[] = [
   },
   {
     id: "generic-api-key",
-    pattern: /(?:api[_-]?key|x-api-key|apikey)\s*[=:]\s*['"]?[A-Za-z0-9_-]{20,}['"]?/i,
+    pattern:
+      /(?:api[_-]?key|x-api-key|apikey)\s*[=:]\s*['"]?[A-Za-z0-9_-]{20,}['"]?/i,
     severity: "high",
     message: "Potential hardcoded API key detected",
     fix: "Move secrets to environment variables and reference them with $VAR_NAME.",

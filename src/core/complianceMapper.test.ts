@@ -27,7 +27,11 @@ describe("mapCompliance", () => {
 
   it("maps GitHub token finding to LLM02", () => {
     const findings = [
-      makeFinding("Hardcoded GitHub personal access token detected", "PatternScanner", "critical"),
+      makeFinding(
+        "Hardcoded GitHub personal access token detected",
+        "PatternScanner",
+        "critical",
+      ),
     ];
     const result = mapCompliance(findings);
     expect(result[0].compliance?.some((r) => r.id === "LLM02")).toBe(true);
@@ -49,7 +53,9 @@ describe("mapCompliance", () => {
 
   it("maps base64 blob finding to LLM04 and AML.T0020", () => {
     const findings = [
-      makeFinding("Long base64-encoded blob detected — possible obfuscated payload"),
+      makeFinding(
+        "Long base64-encoded blob detected — possible obfuscated payload",
+      ),
     ];
     const result = mapCompliance(findings);
     const refs = result[0].compliance ?? [];
@@ -145,7 +151,9 @@ describe("getAffectedFrameworks", () => {
   it("returns sorted, unique framework labels", () => {
     const findings = mapCompliance([
       makeFinding("Hardcoded AWS Access Key ID detected"),
-      makeFinding("Long base64-encoded blob detected — possible obfuscated payload"),
+      makeFinding(
+        "Long base64-encoded blob detected — possible obfuscated payload",
+      ),
     ]);
     const labels = getAffectedFrameworks(findings);
     expect(labels.length).toBeGreaterThan(0);
@@ -163,6 +171,8 @@ describe("getAffectedFrameworks", () => {
     const labels = getAffectedFrameworks(findings);
     expect(labels.some((l) => l.includes("OWASP LLM Top 10"))).toBe(true);
     expect(labels.some((l) => l.includes("LLM02"))).toBe(true);
-    expect(labels.some((l) => l.includes("Sensitive Information Disclosure"))).toBe(true);
+    expect(
+      labels.some((l) => l.includes("Sensitive Information Disclosure")),
+    ).toBe(true);
   });
 });
