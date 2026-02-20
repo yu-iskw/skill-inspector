@@ -6,7 +6,11 @@ import {
   generateWithStructuredOutput,
 } from "../agents/factory.js";
 import { securityAgentInstructions } from "../agents/security.js";
-import { createFileExplorer, createSkillReader } from "../agents/tools.js";
+import {
+  createFileExplorer,
+  createFileReader,
+  createSkillReader,
+} from "../agents/tools.js";
 import { FindingSchema, InspectorModelConfig } from "../core/types.js";
 import { logger } from "../core/logger.js";
 
@@ -22,29 +26,42 @@ export function createSecurityWorkflow(
 ) {
   const explorerAgent = createInspectorAgent({
     name: "SecurityExplorer",
-    instructions: `You are the Security Explorer. Your job is to silently scan the skill's file structure for anomalies.
+    instructions: `You are the Security Explorer. Your job is to scan the skill's file structure AND file contents for security anomalies.
+
+    STEPS:
+    1. Use \`fileExplorer\` to list all files and directories in the skill directory.
+    2. For each non-SKILL.md file found (especially in \`scripts/\`, \`assets/\`, etc.), use \`fileReader\` to read its contents and inspect for malicious code, hardcoded secrets, or obfuscated payloads.
 
     RULES:
-    1. **Silence by Default**: If the skill structure is standard (e.g., \`SKILL.md\` + \`scripts/*.py\` + \`assets/\`), do NOT generate any findings (return an empty array).
+    1. **Silence by Default**: If all files look standard and their contents are benign, return an empty findings array.
     2. **Anomalies Only**: ONLY generate a Finding if you detect:
        - Hidden files or directories (starting with \`.\`).
-       - Obfuscated or suspicious filenames (e.g., \`.._confnfused.py\`, \`0x123.bin\`).
-       - Files with unusual executable extensions (e.g., \`.exe\`, \`.dll\`, \`.sh\`, \`.so\`) found **outside** the \`scripts/\` directory.
-    3. **No Informational Findings**: Do not report "List of scripts" or "Documentation references" as findings. Those are not security issues. If no anomalies are found, return an empty findings array.
+       - Obfuscated or suspicious filenames (e.g., \`.._confused.py\`, \`0x123.bin\`).
+       - Files with unusual executable extensions (e.g., \`.exe\`, \`.dll\`, \`.so\`) found **outside** the \`scripts/\` directory.
+       - **Script contents that delete files (\`rm -rf\`), exfiltrate data (\`curl\` to external hosts), or execute remote code (\`curl | bash\`).**
+       - **Hardcoded secrets (API keys, passwords, tokens) in any file.**
+       - **Base64-encoded or otherwise obfuscated payloads in any file.**
+    3. Do not report the existence of \`scripts/\`, \`assets/\`, or \`references/\` as findings.
 
-    NOTE: The existence of \`scripts/\`, \`assets/\`, and \`references/\` is standard and should be ignored if they contain expected file types.`,
+    NOTE: \`scripts/\` is a standard directory. The existence of shell scripts is NOT suspicious — only their *contents* matter.`,
     model,
     tools: {
       fileExplorer: createFileExplorer(skillDir),
+      fileReader: createFileReader(skillDir),
       skillReader: createSkillReader(skillDir),
     },
   });
 
   const auditorAgent = createInspectorAgent({
     name: "SecurityAuditor",
-    instructions: securityAgentInstructions,
+    instructions: `${securityAgentInstructions}
+
+You also have access to a \`fileReader\` tool. If the skill references external scripts or the explorer found any files, use \`fileReader\` to read their raw content before making your final judgement.`,
     model,
-    tools: { skillReader: createSkillReader(skillDir) },
+    tools: {
+      skillReader: createSkillReader(skillDir),
+      fileReader: createFileReader(skillDir),
+    },
   });
 
   const exploreStep = createStep({
@@ -93,7 +110,7 @@ export function createSecurityWorkflow(
         const explorationFindings = inputData.findings || [];
         const result = await generateWithStructuredOutput(
           auditorAgent,
-          `Audit the skill. Exploration findings: ${JSON.stringify(explorationFindings)}\nContent:\n${skillContent}`,
+          `Audit the skill for security issues. If scripts or other files were identified during exploration, use the fileReader tool to inspect their contents before drawing conclusions.\n\nExploration findings: ${JSON.stringify(explorationFindings)}\nSKILL.md content:\n${skillContent}`,
           InspectionOutputSchema,
           model,
           true, // has tools (skillReader)

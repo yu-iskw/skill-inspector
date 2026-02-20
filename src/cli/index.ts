@@ -12,7 +12,7 @@ export const program = new Command();
 program
   .name("skill-inspector")
   .description("Inspect Agent Skills for quality, security, and compatibility")
-  .version("0.1.0");
+  .version("0.2.0");
 
 function printReport(report: InspectionReport, isJson: boolean) {
   if (isJson) {
@@ -21,9 +21,12 @@ function printReport(report: InspectionReport, isJson: boolean) {
   }
 
   if (report.incomplete) {
-    // Incomplete inspection - show warning
+    // Incomplete inspection - show warning with score range
+    const rangeStr = report.scoreRange
+      ? ` (${report.scoreRange.min}–${report.scoreRange.max}/100)`
+      : "";
     console.log(
-      `\n${chalk.bold("Overall Score:")} ${chalk.yellow("INCOMPLETE")}`,
+      `\n${chalk.bold("Overall Score:")} ${chalk.yellow(`INCOMPLETE${rangeStr}`)}`,
     );
     console.log(`${chalk.bold("Summary:")} ${chalk.yellow(report.summary)}`);
 
@@ -72,6 +75,18 @@ function printReport(report: InspectionReport, isJson: boolean) {
     console.log(
       `\n${chalk.bold("Overall Score:")} ${color(report.overallScore)}/100`,
     );
+    if (report.scoreBreakdown && report.findings.length > 0) {
+      const { security, spec, compat } = report.scoreBreakdown;
+      const parts = [];
+      if (security > 0) parts.push(`Security -${security}pts`);
+      if (spec > 0) parts.push(`Spec -${spec}pts`);
+      if (compat > 0) parts.push(`Compat -${compat}pts`);
+      if (parts.length > 0) {
+        console.log(
+          `${chalk.bold("Score Breakdown:")} ${chalk.gray(parts.join(", "))}`,
+        );
+      }
+    }
     console.log(`${chalk.bold("Summary:")} ${report.summary}`);
 
     if (report.findings.length > 0) {
@@ -112,6 +127,11 @@ program
     "--sandbox",
     "Clone remote repos in-memory (isomorphic-git + memfs) so no arbitrary repo files touch the host filesystem. Only SKILL.md content is written to a temp dir. Requires no extra setup — pure Node.js.",
     false,
+  )
+  .option(
+    "--timeout <seconds>",
+    "Timeout in seconds for each agent step (security, compat). Default: 120.",
+    "120",
   )
   .action(async (source = ".", options) => {
     // Configure logger
@@ -160,10 +180,13 @@ program
           skillPath: skill.path,
         });
 
-        const report = await runInspectorWorkflow(skill, !!options.debug, {
-          provider: options.provider,
-          model: options.model,
-        });
+        const timeoutMs = Math.max(1, parseInt(options.timeout, 10)) * 1000;
+        const report = await runInspectorWorkflow(
+          skill,
+          !!options.debug,
+          { provider: options.provider, model: options.model },
+          timeoutMs,
+        );
 
         logger.info(`Finished inspection for skill: ${skill.name}`, {
           score: report.overallScore,

@@ -86,6 +86,39 @@ export const createFileExplorer = (allowedRoot: string) =>
     },
   });
 
+const MAX_FILE_READ_BYTES = 50 * 1024; // 50 KB cap
+
+/**
+ * Tool to read the raw content of any file in the skill directory.
+ * Used by security agents to inspect scripts, assets, and other files.
+ */
+export const createFileReader = (allowedRoot: string) =>
+  createTool({
+    id: "fileReader",
+    description:
+      "Read the raw content of any file in the skill directory (scripts, assets, etc.). Use this to inspect file contents for malicious code, hardcoded secrets, or obfuscation. Capped at 50 KB.",
+    inputSchema: z.object({
+      filePath: z.string().describe("The absolute path to the file to read"),
+    }),
+    execute: async (input) => {
+      try {
+        await validatePath(allowedRoot, input.filePath);
+        const content = await fs.readFile(input.filePath, "utf-8");
+        const truncated = content.length > MAX_FILE_READ_BYTES;
+        return {
+          content: truncated
+            ? `${content.slice(0, MAX_FILE_READ_BYTES)}\n[...truncated at 50 KB]`
+            : content,
+          truncated,
+        };
+      } catch (error: unknown) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        throw new Error(`Error reading file: ${errorMessage}`);
+      }
+    },
+  });
+
 /**
  * Tool to provide specification details for agentskills.io
  */

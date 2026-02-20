@@ -36,6 +36,10 @@ export interface Skill {
 export interface InspectionReport {
   skillName: string;
   overallScore: number;
+  /** Present on incomplete reports: [pessimistic, optimistic] score bounds */
+  scoreRange?: { min: number; max: number };
+  /** Points deducted per agent category after per-category caps are applied */
+  scoreBreakdown?: { security: number; spec: number; compat: number };
   findings: Array<Finding>;
   summary: string;
   timestamp: string;
