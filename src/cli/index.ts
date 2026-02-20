@@ -14,7 +14,49 @@ program
   .description("Inspect Agent Skills for quality, security, and compatibility")
   .version("0.2.0");
 
-function printReport(report: InspectionReport, isJson: boolean) {
+function printFindings(
+  findings: InspectionReport["findings"],
+  showCompliance: boolean,
+) {
+  findings.forEach((f) => {
+    const severityColor =
+      f.severity === "critical"
+        ? chalk.bgRed.white
+        : f.severity === "high"
+          ? chalk.red
+          : f.severity === "medium"
+            ? chalk.yellow
+            : chalk.blue;
+    console.log(
+      `- [${f.agent}] ${severityColor(f.severity.toUpperCase())}: ${f.message}`,
+    );
+    if (f.fix) console.log(`  ${chalk.gray("Fix:")} ${f.fix}`);
+    if (showCompliance && f.compliance && f.compliance.length > 0) {
+      f.compliance.forEach((ref) => {
+        const link = ref.url ? ` (${ref.url})` : "";
+        console.log(
+          `  ${chalk.cyan("↳")} ${chalk.cyan(`${ref.framework}: ${ref.id} — ${ref.name}`)}${chalk.gray(link)}`,
+        );
+      });
+    }
+  });
+}
+
+function printComplianceSummary(report: InspectionReport) {
+  if (!report.complianceFrameworks || report.complianceFrameworks.length === 0) {
+    console.log(chalk.green("  No compliance frameworks affected."));
+    return;
+  }
+  report.complianceFrameworks.forEach((label) => {
+    console.log(`  ${chalk.cyan("•")} ${label}`);
+  });
+}
+
+function printReport(
+  report: InspectionReport,
+  isJson: boolean,
+  showCompliance: boolean,
+) {
   if (isJson) {
     logger.info("Inspection complete", { report });
     return;
@@ -48,20 +90,7 @@ function printReport(report: InspectionReport, isJson: boolean) {
       console.log(
         `\n${chalk.bold("Partial Findings (from completed steps):")}`,
       );
-      report.findings.forEach((f) => {
-        const severityColor =
-          f.severity === "critical"
-            ? chalk.bgRed.white
-            : f.severity === "high"
-              ? chalk.red
-              : f.severity === "medium"
-                ? chalk.yellow
-                : chalk.blue;
-        console.log(
-          `- [${f.agent}] ${severityColor(f.severity.toUpperCase())}: ${f.message}`,
-        );
-        if (f.fix) console.log(`  ${chalk.gray("Fix:")} ${f.fix}`);
-      });
+      printFindings(report.findings, showCompliance);
     }
   } else {
     // Complete inspection
@@ -91,20 +120,12 @@ function printReport(report: InspectionReport, isJson: boolean) {
 
     if (report.findings.length > 0) {
       console.log(`\n${chalk.bold("Findings:")}`);
-      report.findings.forEach((f) => {
-        const severityColor =
-          f.severity === "critical"
-            ? chalk.bgRed.white
-            : f.severity === "high"
-              ? chalk.red
-              : f.severity === "medium"
-                ? chalk.yellow
-                : chalk.blue;
-        console.log(
-          `- [${f.agent}] ${severityColor(f.severity.toUpperCase())}: ${f.message}`,
-        );
-        if (f.fix) console.log(`  ${chalk.gray("Fix:")} ${f.fix}`);
-      });
+      printFindings(report.findings, showCompliance);
+    }
+
+    if (showCompliance) {
+      console.log(`\n${chalk.bold("Compliance Frameworks Affected:")}`);
+      printComplianceSummary(report);
     }
   }
   console.log("\n" + chalk.gray("=".repeat(40)) + "\n");
@@ -121,6 +142,11 @@ program
   )
   .option("-m, --model <model>", "Specific model ID to use")
   .option("--json", "Output results in JSON format")
+  .option(
+    "--compliance",
+    "Show compliance framework references (OWASP LLM Top 10, MITRE ATLAS) alongside each finding",
+    false,
+  )
   .option("--debug", "Show detailed agent logs and thoughts", false)
   .option("--stack-trace", "Show stack trace on error", false)
   .option(
@@ -193,7 +219,7 @@ program
           findingsCount: report.findings.length,
         });
 
-        printReport(report, !!options.json);
+        printReport(report, !!options.json, !!options.compliance);
       }
     } catch (error: unknown) {
       logger.error("Inspection failed", error);

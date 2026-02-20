@@ -1,10 +1,20 @@
 import { z } from "zod";
 
+export const ComplianceRefSchema = z.object({
+  framework: z.string(),
+  id: z.string(),
+  name: z.string(),
+  url: z.string().optional(),
+});
+
+export type ComplianceRef = z.infer<typeof ComplianceRefSchema>;
+
 export const FindingSchema = z.object({
   severity: z.enum(["low", "medium", "high", "critical"]),
   message: z.string(),
   fix: z.string().optional(),
   agent: z.string().optional(),
+  compliance: z.array(ComplianceRefSchema).optional(),
 });
 
 export type Finding = z.infer<typeof FindingSchema>;
@@ -41,6 +51,8 @@ export interface InspectionReport {
   /** Points deducted per agent category after per-category caps are applied */
   scoreBreakdown?: { security: number; spec: number; compat: number };
   findings: Array<Finding>;
+  /** Unique compliance framework references hit across all findings */
+  complianceFrameworks?: Array<string>;
   summary: string;
   timestamp: string;
   incomplete?: boolean;

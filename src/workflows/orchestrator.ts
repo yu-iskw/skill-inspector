@@ -15,6 +15,8 @@ import {
 import { getModelConfig, LLMConfig } from "../core/llm.js";
 import { createSecurityWorkflow } from "./security.js";
 import { validateSpec } from "../core/validators.js";
+import { scanPatterns } from "../core/patternScanner.js";
+import { mapCompliance, getAffectedFrameworks } from "../core/complianceMapper.js";
 import { logger } from "../core/logger.js";
 
 // ---------------------------------------------------------------------------
@@ -41,6 +43,7 @@ function classifyAgent(agent: string | undefined): AgentCategory {
   if (!agent) return "security";
   const a = agent.toLowerCase();
   if (a.includes("security") || a.startsWith("security")) return "security";
+  if (a === "patternscan" || a === "patternscanneragent") return "security";
   if (a === "specvalidator") return "spec";
   if (a === "compatagent") return "compat";
   return "security"; // unknown agents fall into security bucket
@@ -284,14 +287,17 @@ export async function runInspectorWorkflow(
 ): Promise<InspectionReport> {
   const modelConfig = getModelConfig(llmConfig);
 
-  // Step 1: deterministic spec validation (no LLM, no timeout needed)
+  // Step 1: deterministic checks (no LLM, no timeout needed)
   const specFindings = validateSpec(skill).map((f) => ({
     ...f,
     agent: f.agent ?? "SpecValidator",
   }));
 
-  logger.debug("Spec validation complete", {
-    findings: specFindings.length,
+  const patternFindings = scanPatterns(skill.content, skill.path);
+
+  logger.debug("Deterministic checks complete", {
+    specFindings: specFindings.length,
+    patternFindings: patternFindings.length,
   });
 
   // Steps 2 & 3: run security and compat in parallel, each with a timeout
@@ -313,12 +319,14 @@ export async function runInspectorWorkflow(
     compatFailed: compatResult.failed,
   });
 
-  // Combine all findings
-  const allFindings: Array<Finding> = [
+  // Combine all findings, then enrich with compliance framework references
+  const rawFindings: Array<Finding> = [
     ...specFindings,
+    ...patternFindings,
     ...(securityResult.findings ?? []),
     ...(compatResult.findings ?? []),
   ];
+  const allFindings = mapCompliance(rawFindings);
 
   // Collect failed steps and errors
   const failedSteps: Array<string> = [];
@@ -346,12 +354,15 @@ export async function runInspectorWorkflow(
       ? "No issues found. Skill looks safe and compliant."
       : `Found ${allFindings.length} potential issue(s) across multiple agents.`;
 
+  const complianceFrameworks = getAffectedFrameworks(allFindings);
+
   return {
     skillName: skill.name,
     overallScore: score,
     scoreRange,
     scoreBreakdown,
     findings: allFindings,
+    complianceFrameworks: complianceFrameworks.length > 0 ? complianceFrameworks : undefined,
     summary: summaryText,
     timestamp: new Date().toISOString(),
     incomplete,
