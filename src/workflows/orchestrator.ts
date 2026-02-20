@@ -63,7 +63,11 @@ function calculateNormalizedScore(
   scoreBreakdown: { security: number; spec: number; compat: number };
 } {
   // Accumulate raw deductions per category
-  const raw: Record<AgentCategory, number> = { security: 0, spec: 0, compat: 0 };
+  const raw: Record<AgentCategory, number> = {
+    security: 0,
+    spec: 0,
+    compat: 0,
+  };
   for (const f of findings) {
     const cat = classifyAgent(f.agent);
     raw[cat] += SEVERITY_DEDUCTIONS[f.severity] ?? 0;
@@ -107,7 +111,11 @@ function calculateNormalizedScore(
 // Timeout helper
 // ---------------------------------------------------------------------------
 
-type StepResult = { findings: Array<Finding>; failed?: boolean; error?: string };
+type StepResult = {
+  findings: Array<Finding>;
+  failed?: boolean;
+  error?: string;
+};
 
 async function runWithTimeout(
   promise: Promise<StepResult>,
@@ -196,8 +204,7 @@ async function runSecurityCheck(
     }
     return { findings: allFindings };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error(
       "Error in security check",
       error instanceof Error ? error : new Error(errorMessage),
@@ -234,8 +241,7 @@ async function runCompatCheck(
       findings: result.findings.map((f) => ({ ...f, agent: "CompatAgent" })),
     };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error(
       "Error in compatibility check",
       error instanceof Error ? error : new Error(errorMessage),
@@ -272,7 +278,7 @@ export const StepOutputSchema = z.object({
  */
 export async function runInspectorWorkflow(
   skill: Skill,
-  debug = false,
+  _debug = false,
   llmConfig?: Partial<LLMConfig>,
   timeoutMs = 120_000,
 ): Promise<InspectionReport> {
@@ -295,7 +301,11 @@ export async function runInspectorWorkflow(
 
   const [securityResult, compatResult] = await Promise.all([
     runWithTimeout(runSecurityCheck(modelConfig, skill), timeoutMs, "security"),
-    runWithTimeout(runCompatCheck(modelConfig, skill), timeoutMs, "compatibility"),
+    runWithTimeout(
+      runCompatCheck(modelConfig, skill),
+      timeoutMs,
+      "compatibility",
+    ),
   ]);
 
   logger.debug("Parallel checks complete", {
@@ -319,8 +329,7 @@ export async function runInspectorWorkflow(
   }
   if (compatResult.failed) {
     failedSteps.push("compatibility");
-    if (compatResult.error)
-      errors.push(`compatibility: ${compatResult.error}`);
+    if (compatResult.error) errors.push(`compatibility: ${compatResult.error}`);
   }
 
   const incomplete = failedSteps.length > 0;
