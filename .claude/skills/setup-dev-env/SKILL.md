@@ -11,11 +11,11 @@ This skill automates the process of setting up the development environment to en
 
 - [ ] **Step 1: Environment Validation**
   - [ ] Check Node.js version against `.node-version`
-  - [ ] Check for `trunk` installation
+  - [ ] Check for `pnpm` installation
 - [ ] **Step 2: Dependency Installation**
-  - [ ] Run `pnpm install`
+  - [ ] Run `pnpm install` (this also installs the `trunk` launcher)
 - [ ] **Step 3: Tooling Setup**
-  - [ ] Run `trunk install` to fetch managed linters and formatters
+  - [ ] Run `pnpm trunk install` to fetch managed linters and formatters
 
 ## Detailed Instructions
 
@@ -27,8 +27,11 @@ Read the `.node-version` file in the workspace root. Ensure the current Node.js 
 
 #### Trunk CLI
 
-Check if `trunk` is installed by running `trunk --version`.
-If `trunk` is not found, advise the user to install it. On macOS, use:
+Trunk is managed via `pnpm` in this project using `@trunkio/launcher`. This ensures it works in cloud environments like Claude Code Cloud without manual installation.
+
+The `trunk` launcher is installed automatically during `pnpm install`. You can then run Trunk commands using `pnpm trunk`.
+
+For local macOS users who prefer a global installation:
 
 ```bash
 brew install trunk-io
@@ -38,7 +41,7 @@ For other platforms, refer to the [Trunk installation documentation](https://doc
 
 ### 2. Dependency Installation
 
-Run the following command at the workspace root to install all project dependencies. Refer to [../common-references/pnpm-commands.md](../common-references/pnpm-commands.md) for more pnpm commands.
+Run the following command at the workspace root to install all project dependencies, including the Trunk launcher. Refer to [../common-references/pnpm-commands.md](../common-references/pnpm-commands.md) for more pnpm commands.
 
 ```bash
 pnpm install
@@ -46,11 +49,13 @@ pnpm install
 
 ### 3. Tooling Setup
 
-Trunk manages linters and formatters hermetically. Run the following command to ensure all required tools are downloaded and ready. Refer to [../common-references/trunk-commands.md](../common-references/trunk-commands.md) for more Trunk commands.
+Trunk manages linters and formatters hermetically. Run the following command to ensure all required tools are downloaded and ready.
 
 ```bash
-trunk install
+pnpm trunk install
 ```
+
+Refer to [../common-references/trunk-commands.md](../common-references/trunk-commands.md) for more Trunk commands.
 
 ## Success Criteria
 
